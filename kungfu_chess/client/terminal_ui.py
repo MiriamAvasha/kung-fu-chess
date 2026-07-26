@@ -3,6 +3,12 @@ from typing import Any, Dict
 from shared.protocol import decode_message
 
 
+COLOR_LABELS = {
+    'w': 'White',
+    'b': 'Black',
+}
+
+
 def print_board(state: Dict[str, Any]):
     board = state['board']
     height = state['board_height']
@@ -43,6 +49,28 @@ def display_message(raw_message: str):
         )
         return
 
+    if message_type == 'join_accepted':
+        color = COLOR_LABELS.get(message.get('color'), message.get('color'))
+        print(
+            'Joined as {} ({})'.format(
+                message.get('username'),
+                color,
+            )
+        )
+        players = message.get('players') or []
+        if players:
+            roster = ', '.join(
+                '{}={}'.format(
+                    player.get('username'),
+                    COLOR_LABELS.get(player.get('color'), player.get('color')),
+                )
+                for player in players
+            )
+            print('Players: {}'.format(roster))
+        if len(players) < 2:
+            print('Waiting for second player...')
+        return
+
     if message_type == 'move_result':
         status = 'accepted' if message.get('accepted') else 'rejected'
         print(
@@ -55,6 +83,8 @@ def display_message(raw_message: str):
         return
 
     if message_type in ('initial_state', 'game_state'):
+        if message_type == 'initial_state':
+            print('Game starting!')
         print_board(message['state'])
         return
 

@@ -21,11 +21,24 @@ class GameSession:
             'state': game_state_payload(self.engine),
         }
 
-    def handle_command(self, raw_command: str) -> Dict[str, Any]:
+    def handle_command(
+        self,
+        raw_command: str,
+        player_color: str,
+    ) -> Dict[str, Any]:
         try:
             command = parse_move_command(raw_command)
         except MoveCommandError as error:
             return error_message('invalid_command', str(error))
+
+        if command.token[0] != player_color:
+            return {
+                'type': 'move_result',
+                'command': command.raw,
+                'accepted': False,
+                'reason': 'wrong_color',
+                'state': game_state_payload(self.engine),
+            }
 
         piece = self.engine.game_state.board.piece_at(command.source)
         if piece is not None and piece.token != command.token:

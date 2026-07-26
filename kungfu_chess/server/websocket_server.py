@@ -8,6 +8,16 @@ from websockets.exceptions import ConnectionClosed
 
 from engine.game_factory import build_engine
 from server.game_session import GameSession
+from server.lobby import Lobby, LobbyError
+from shared.messages import (
+    ErrorMessage,
+    JoinAccepted,
+    JoinRequest,
+    MoveRequest,
+    ProtocolError,
+    message_to_dict,
+    parse_client_message,
+)
 from shared.protocol import encode_message, error_message
 
 
@@ -19,41 +29,112 @@ TICK_SECONDS = 0.05
 class GameServer:
     def __init__(self, session: Optional[GameSession] = None):
         self.session = session or GameSession(build_engine())
+        self.lobby = Lobby()
         self.clients: Set[Any] = set()
+        self._game_started = False
 
     async def handle_client(self, websocket):
         self.clients.add(websocket)
         print('Client connected')
         try:
-            await self._send(websocket, self.session.initial_message())
             async for raw_message in websocket:
                 if not isinstance(raw_message, str):
                     await self._send(
                         websocket,
                         error_message(
                             'invalid_command',
-                            'move command must be text',
+                            'message must be text JSON',
                         ),
                     )
                     continue
 
-                result = self.session.handle_command(raw_message)
-                await self._send(websocket, result)
-                if (
-                    result.get('type') == 'move_result'
-                    and result.get('accepted')
-                ):
-                    await self.broadcast_game_state()
+                try:
+                    message = parse_client_message(raw_message)
+                except ProtocolError as error:
+                    await self._send(
+                        websocket,
+                        ErrorMessage('invalid_command', str(error)).to_dict(),
+                    )
+                    continue
+
+                if isinstance(message, JoinRequest):
+                    await self._handle_join(websocket, message)
+                elif isinstance(message, MoveRequest):
+                    await self._handle_move(websocket, message)
         except ConnectionClosed:
             pass
         finally:
+            self.lobby.leave(websocket)
             self.clients.discard(websocket)
             print('Client disconnected')
+
+    async def _handle_join(self, websocket, message: JoinRequest):
+        try:
+            player = self.lobby.try_join(message.username, websocket)
+        except LobbyError as error:
+            await self._send(
+                websocket,
+                ErrorMessage(error.code, error.message).to_dict(),
+            )
+            return
+
+        accepted = JoinAccepted(
+            username=player.username,
+            color=player.color,
+            players=self.lobby.player_infos(),
+        )
+        await self._send(websocket, accepted.to_dict())
+        print(
+            'Player joined: {} as {}'.format(
+                player.username,
+                'White' if player.color == 'w' else 'Black',
+            )
+        )
+
+        if self.lobby.is_ready() and not self._game_started:
+            self._game_started = True
+            await self._broadcast(self.session.initial_message())
+
+    async def _handle_move(self, websocket, message: MoveRequest):
+        player = self.lobby.get_player(websocket)
+        if player is None:
+            await self._send(
+                websocket,
+                ErrorMessage(
+                    'not_joined',
+                    'join the lobby before sending moves',
+                ).to_dict(),
+            )
+            return
+
+        if not self.lobby.is_ready():
+            await self._send(
+                websocket,
+                ErrorMessage(
+                    'game_not_ready',
+                    'waiting for a second player to join',
+                ).to_dict(),
+            )
+            return
+
+        result = self.session.handle_command(
+            message.command,
+            player.color,
+        )
+        await self._send(websocket, result)
+        if (
+            result.get('type') == 'move_result'
+            and result.get('accepted')
+        ):
+            await self.broadcast_game_state()
 
     async def run_ticker(self):
         previous = time.monotonic()
         while True:
             await asyncio.sleep(TICK_SECONDS)
+            if not self._game_started:
+                previous = time.monotonic()
+                continue
             current = time.monotonic()
             elapsed_ms = max(1, int((current - previous) * 1000))
             previous = current
@@ -61,10 +142,13 @@ class GameServer:
                 await self.broadcast_game_state()
 
     async def broadcast_game_state(self):
+        await self._broadcast(self.session.game_state_message())
+
+    async def _broadcast(self, message):
         if not self.clients:
             return
 
-        encoded = encode_message(self.session.game_state_message())
+        encoded = encode_message(message_to_dict(message))
         disconnected = set()
         for client in tuple(self.clients):
             try:
@@ -74,7 +158,7 @@ class GameServer:
         self.clients.difference_update(disconnected)
 
     async def _send(self, websocket, message):
-        await websocket.send(encode_message(message))
+        await websocket.send(encode_message(message_to_dict(message)))
 
 
 async def main(host: str = HOST, port: int = PORT):
