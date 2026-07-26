@@ -9,15 +9,10 @@ from websockets.exceptions import ConnectionClosed
 from engine.game_factory import build_engine
 from server.game_session import GameSession
 from server.lobby import Lobby, LobbyError
-from shared.messages import (
-    ErrorMessage,
-    JoinAccepted,
-    JoinRequest,
-    MoveRequest,
-    ProtocolError,
-    message_to_dict,
-    parse_client_message,
-)
+from shared.messages.client_messages import JoinRequest, MoveRequest
+from shared.messages.errors import ProtocolError
+from shared.messages.parsers import message_to_dict, parse_client_message
+from shared.messages.server_messages import ErrorMessage, JoinAccepted
 from shared.protocol import encode_message, error_message
 
 

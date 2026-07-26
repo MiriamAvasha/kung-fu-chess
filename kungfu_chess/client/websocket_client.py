@@ -5,7 +5,7 @@ from websockets.exceptions import ConnectionClosed
 
 from client.home_screen import prompt_username
 from client.terminal_ui import display_message
-from shared.messages import JoinRequest, MoveRequest
+from shared.messages.client_messages import JoinRequest, MoveRequest
 from shared.protocol import decode_message, encode_message
 
 

@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from shared.messages import PlayerInfo
+from shared.messages.server_messages import PlayerInfo
 from shared.username import validate_username
 
 

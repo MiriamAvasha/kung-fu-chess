@@ -1,12 +1,10 @@
 import pytest
 
 from server.lobby import Lobby, LobbyError
-from shared.messages import (
-    JoinRequest,
-    MoveRequest,
-    ProtocolError,
-    parse_client_message,
-)
+from shared.messages.client_messages import JoinRequest, MoveRequest
+from shared.messages.errors import ProtocolError
+from shared.messages.parsers import parse_client_message, parse_server_message
+from shared.messages.server_messages import ErrorMessage, JoinAccepted, PlayerInfo
 from shared.protocol import encode_message
 from shared.username import validate_username
 
@@ -83,3 +81,22 @@ def test_join_and_move_message_roundtrip():
 def test_parse_client_message_rejects_unknown_type():
     with pytest.raises(ProtocolError):
         parse_client_message('{"type":"jump"}')
+
+
+def test_join_accepted_and_error_server_message_roundtrip():
+    accepted = JoinAccepted(
+        'Alice',
+        'w',
+        [PlayerInfo('Alice', 'w')],
+    )
+    parsed_accepted = parse_server_message(
+        encode_message(accepted.to_dict())
+    )
+    assert parsed_accepted.username == 'Alice'
+    assert parsed_accepted.color == 'w'
+    assert parsed_accepted.players[0].username == 'Alice'
+
+    error = ErrorMessage('room_full', 'lobby supports only 2 players')
+    parsed_error = parse_server_message(encode_message(error.to_dict()))
+    assert parsed_error.code == 'room_full'
+    assert parsed_error.message == 'lobby supports only 2 players'

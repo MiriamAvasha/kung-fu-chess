@@ -4,7 +4,7 @@ import json
 import websockets
 
 from server.websocket_server import GameServer
-from shared.messages import JoinRequest, MoveRequest
+from shared.messages.client_messages import JoinRequest, MoveRequest
 from shared.protocol import encode_message
 
 
