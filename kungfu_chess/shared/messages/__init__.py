@@ -34,9 +34,18 @@ from shared.messages.server_messages import (
     QueueStatus,
     RatingUpdate,
 )
+from shared.messages.types import (
+    ALL_CLIENT_MESSAGE_TYPES,
+    ALL_SERVER_MESSAGE_TYPES,
+    ClientMessageType,
+    ServerMessageType,
+)
 
 __all__ = [
+    'ALL_CLIENT_MESSAGE_TYPES',
+    'ALL_SERVER_MESSAGE_TYPES',
     'ClientMessage',
+    'ClientMessageType',
     'DisconnectCountdown',
     'ErrorMessage',
     'JoinAccepted',
@@ -50,6 +59,7 @@ __all__ = [
     'QueueStatus',
     'RatingUpdate',
     'ServerMessage',
+    'ServerMessageType',
     'message_to_dict',
     'parse_client_message',
     'parse_disconnect_countdown',

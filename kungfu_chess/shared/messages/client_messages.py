@@ -1,8 +1,10 @@
 from typing import Any, Dict
 
+from shared.messages.types import ClientMessageType
+
 
 class JoinRequest:
-    TYPE = 'join'
+    TYPE = ClientMessageType.JOIN
 
     def __init__(self, username: str, password: str):
         self.username = username
@@ -17,7 +19,7 @@ class JoinRequest:
 
 
 class PlayRequest:
-    TYPE = 'play'
+    TYPE = ClientMessageType.PLAY
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -26,7 +28,7 @@ class PlayRequest:
 
 
 class MoveRequest:
-    TYPE = 'move'
+    TYPE = ClientMessageType.MOVE
 
     def __init__(self, command: str):
         self.command = command

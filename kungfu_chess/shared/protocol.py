@@ -48,8 +48,10 @@ def state_message(message_type: str, engine: GameEngine) -> Dict[str, Any]:
 
 
 def error_message(code: str, message: str) -> Dict[str, Any]:
+    from shared.messages.types import ServerMessageType
+
     return {
-        'type': 'error',
+        'type': ServerMessageType.ERROR,
         'code': code,
         'message': message,
     }

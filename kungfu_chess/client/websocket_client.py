@@ -6,10 +6,21 @@ from websockets.exceptions import ConnectionClosed
 from client.home_screen import prompt_credentials, prompt_play
 from client.terminal_ui import display_message
 from shared.messages.client_messages import JoinRequest, MoveRequest, PlayRequest
+from shared.messages.types import ServerMessageType
 from shared.protocol import decode_message, encode_message
 
 
 URI = 'ws://localhost:8765'
+
+MATCH_SUCCESS_TYPES = frozenset({
+    ServerMessageType.MATCH_FOUND,
+    ServerMessageType.INITIAL_STATE,
+})
+
+MATCH_FAILURE_TYPES = frozenset({
+    ServerMessageType.NO_MATCH,
+    ServerMessageType.ERROR,
+})
 
 
 async def send_commands(websocket):
@@ -45,7 +56,7 @@ async def login(websocket, username: str, password: str) -> bool:
         message = decode_message(raw_message)
     except (TypeError, ValueError):
         return False
-    return message.get('type') == 'join_accepted'
+    return message.get('type') == ServerMessageType.JOIN_ACCEPTED
 
 
 async def wait_for_match(websocket) -> bool:
@@ -59,11 +70,9 @@ async def wait_for_match(websocket) -> bool:
             return False
 
         message_type = message.get('type')
-        if message_type == 'match_found':
+        if message_type in MATCH_SUCCESS_TYPES:
             return True
-        if message_type == 'initial_state':
-            return True
-        if message_type in ('no_match', 'error'):
+        if message_type in MATCH_FAILURE_TYPES:
             return False
         # queue_status and other updates keep waiting
 

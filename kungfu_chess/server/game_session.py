@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Tuple
 from constants import PieceColor, PieceKind, opponent_color
 from engine.game_engine import GameEngine
 from server.move_parser import MoveCommandError, parse_move_command
+from shared.messages.types import ServerMessageType
 from shared.protocol import error_message, game_state_payload
 
 
@@ -13,13 +14,13 @@ class GameSession:
 
     def initial_message(self) -> Dict[str, Any]:
         return {
-            'type': 'initial_state',
+            'type': ServerMessageType.INITIAL_STATE,
             'state': game_state_payload(self.engine),
         }
 
     def game_state_message(self) -> Dict[str, Any]:
         return {
-            'type': 'game_state',
+            'type': ServerMessageType.GAME_STATE,
             'state': game_state_payload(self.engine),
         }
 
@@ -69,7 +70,7 @@ class GameSession:
 
         if command.token[0] != player_color:
             return {
-                'type': 'move_result',
+                'type': ServerMessageType.MOVE_RESULT,
                 'command': command.raw,
                 'accepted': False,
                 'reason': 'wrong_color',
@@ -79,7 +80,7 @@ class GameSession:
         piece = self.engine.game_state.board.piece_at(command.source)
         if piece is not None and piece.token != command.token:
             return {
-                'type': 'move_result',
+                'type': ServerMessageType.MOVE_RESULT,
                 'command': command.raw,
                 'accepted': False,
                 'reason': 'piece_mismatch',
@@ -91,7 +92,7 @@ class GameSession:
             command.destination,
         )
         return {
-            'type': 'move_result',
+            'type': ServerMessageType.MOVE_RESULT,
             'command': command.raw,
             'accepted': result.is_accepted,
             'reason': result.reason,

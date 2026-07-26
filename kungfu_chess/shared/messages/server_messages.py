@@ -1,5 +1,7 @@
 from typing import Any, Dict, List
 
+from shared.messages.types import ServerMessageType
+
 
 class PlayerInfo:
     def __init__(self, username: str, color: str, rating: int):
@@ -18,7 +20,7 @@ class PlayerInfo:
 class JoinAccepted:
     """Authentication succeeded; player is logged in but not yet matched."""
 
-    TYPE = 'join_accepted'
+    TYPE = ServerMessageType.JOIN_ACCEPTED
 
     def __init__(self, username: str, rating: int):
         self.username = username
@@ -33,7 +35,7 @@ class JoinAccepted:
 
 
 class QueueStatus:
-    TYPE = 'queue_status'
+    TYPE = ServerMessageType.QUEUE_STATUS
 
     def __init__(self, timeout_seconds: int, elo_range: int):
         self.timeout_seconds = timeout_seconds
@@ -49,7 +51,7 @@ class QueueStatus:
 
 
 class MatchFound:
-    TYPE = 'match_found'
+    TYPE = ServerMessageType.MATCH_FOUND
 
     def __init__(
         self,
@@ -74,7 +76,7 @@ class MatchFound:
 
 
 class NoMatch:
-    TYPE = 'no_match'
+    TYPE = ServerMessageType.NO_MATCH
 
     def __init__(self, message: str = 'no player found'):
         self.message = message
@@ -87,7 +89,7 @@ class NoMatch:
 
 
 class DisconnectCountdown:
-    TYPE = 'disconnect_countdown'
+    TYPE = ServerMessageType.DISCONNECT_COUNTDOWN
 
     def __init__(
         self,
@@ -109,7 +111,7 @@ class DisconnectCountdown:
 
 
 class RatingUpdate:
-    TYPE = 'rating_update'
+    TYPE = ServerMessageType.RATING_UPDATE
 
     def __init__(
         self,
@@ -134,7 +136,7 @@ class RatingUpdate:
 
 
 class ErrorMessage:
-    TYPE = 'error'
+    TYPE = ServerMessageType.ERROR
 
     def __init__(self, code: str, message: str):
         self.code = code
