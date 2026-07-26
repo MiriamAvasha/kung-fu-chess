@@ -1,3 +1,4 @@
+from constants import PieceColor
 from model.board import Board, board_from_token_rows
 from model.piece import Piece, PieceState
 from model.position import Position
@@ -25,8 +26,8 @@ class TestBoard:
 
     def test_pawn_start_rows_on_8x8(self):
         board = make_board([['.'] * 8 for _ in range(8)])
-        assert board.get_pawn_start_row('w') == 6
-        assert board.get_pawn_start_row('b') == 1
+        assert board.get_pawn_start_row(PieceColor.WHITE.value) == 6
+        assert board.get_pawn_start_row(PieceColor.BLACK.value) == 1
 
     def test_move_piece_updates_cell(self):
         board = make_board([['wR', '.', '.']])

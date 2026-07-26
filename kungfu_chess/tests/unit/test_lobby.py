@@ -1,5 +1,6 @@
 import pytest
 
+from constants import PieceColor
 from server.lobby import Lobby, LobbyError
 from shared.messages.client_messages import JoinRequest, MoveRequest, PlayRequest
 from shared.messages.errors import ProtocolError
@@ -39,8 +40,8 @@ def test_lobby_seats_matched_players():
     lobby = Lobby()
     lobby.seat_match('Alice', 1200, 'c1', 'Bob', 1300, 'c2')
 
-    white = lobby.get_by_color('w')
-    black = lobby.get_by_color('b')
+    white = lobby.get_by_color(PieceColor.WHITE.value)
+    black = lobby.get_by_color(PieceColor.BLACK.value)
     assert white.username == 'Alice'
     assert white.rating == 1200
     assert black.username == 'Bob'
@@ -61,8 +62,8 @@ def test_lobby_leave_frees_seat():
     lobby = Lobby()
     lobby.seat_match('Alice', 1200, 'c1', 'Bob', 1200, 'c2')
     lobby.leave('c1')
-    assert lobby.get_by_color('w') is None
-    assert lobby.get_by_color('b').username == 'Bob'
+    assert lobby.get_by_color(PieceColor.WHITE.value) is None
+    assert lobby.get_by_color(PieceColor.BLACK.value).username == 'Bob'
 
 
 def test_join_play_and_move_message_roundtrip():
@@ -94,12 +95,15 @@ def test_server_message_roundtrips():
 
     match = MatchFound(
         'Alice',
-        'w',
+        PieceColor.WHITE.value,
         1200,
-        [PlayerInfo('Alice', 'w', 1200), PlayerInfo('Bob', 'b', 1210)],
+        [
+            PlayerInfo('Alice', PieceColor.WHITE.value, 1200),
+            PlayerInfo('Bob', PieceColor.BLACK.value, 1210),
+        ],
     )
     parsed_match = parse_server_message(encode_message(match.to_dict()))
-    assert parsed_match.color == 'w'
+    assert parsed_match.color == PieceColor.WHITE.value
     assert len(parsed_match.players) == 2
 
     no_match = NoMatch('no player found')

@@ -5,6 +5,7 @@ import sqlite3
 
 import websockets
 
+from constants import PieceColor
 from server.auth import AuthService, UserRepository
 from server.matchmaking import Matchmaker
 from server.rating import RatingService
@@ -82,8 +83,8 @@ async def websocket_game_scenario():
                 await play(second_client)
                 first_match = await wait_until(first_client, 'match_found')
                 second_match = await wait_until(second_client, 'match_found')
-                assert first_match['color'] == 'w'
-                assert second_match['color'] == 'b'
+                assert first_match['color'] == PieceColor.WHITE.value
+                assert second_match['color'] == PieceColor.BLACK.value
 
                 first_initial = await wait_until(first_client, 'initial_state')
                 second_initial = await wait_until(second_client, 'initial_state')

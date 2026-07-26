@@ -12,6 +12,23 @@ class PieceColor(str, Enum):
 
 VALID_COLORS = frozenset(color.value for color in PieceColor)
 
+COLOR_DISPLAY_NAMES = {
+    PieceColor.WHITE.value: 'White',
+    PieceColor.BLACK.value: 'Black',
+}
+
+
+def opponent_color(color: str) -> str:
+    if color == PieceColor.WHITE.value:
+        return PieceColor.BLACK.value
+    if color == PieceColor.BLACK.value:
+        return PieceColor.WHITE.value
+    raise ValueError('unknown color: {}'.format(color))
+
+
+def color_display_name(color: str) -> str:
+    return COLOR_DISPLAY_NAMES.get(color, color)
+
 class PieceKind(str, Enum):
     KING = 'K'
     QUEEN = 'Q'

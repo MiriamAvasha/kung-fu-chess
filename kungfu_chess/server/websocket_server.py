@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Set
 import websockets
 from websockets.exceptions import ConnectionClosed
 
+from constants import PieceColor, color_display_name, opponent_color
 from engine.game_factory import build_engine
 from server.auth import AuthError, AuthService, UserAccount, UserRepository
 from server.db import open_database
@@ -226,9 +227,11 @@ class GameServer:
             await self._send(player.connection, self.session.initial_message())
 
         print(
-            'Match started: {} (White) vs {} (Black)'.format(
+            'Match started: {} ({}) vs {} ({})'.format(
                 white_entry.username,
+                color_display_name(PieceColor.WHITE.value),
                 black_entry.username,
+                color_display_name(PieceColor.BLACK.value),
             )
         )
 
@@ -384,8 +387,7 @@ class GameServer:
             return
 
         winner = self.lobby.get_by_color(winner_color)
-        loser_color = 'b' if winner_color == 'w' else 'w'
-        loser = self.lobby.get_by_color(loser_color)
+        loser = self.lobby.get_by_color(opponent_color(winner_color))
         if winner is None or loser is None:
             return
 

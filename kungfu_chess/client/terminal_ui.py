@@ -1,12 +1,7 @@
 from typing import Any, Dict
 
+from constants import color_display_name
 from shared.protocol import decode_message
-
-
-COLOR_LABELS = {
-    'w': 'White',
-    'b': 'Black',
-}
 
 
 def print_board(state: Dict[str, Any]):
@@ -73,7 +68,7 @@ def display_message(raw_message: str):
         return
 
     if message_type == 'match_found':
-        color = COLOR_LABELS.get(message.get('color'), message.get('color'))
+        color = color_display_name(message.get('color'))
         print(
             'Match found! You are {} ({}) — rating {}'.format(
                 message.get('username'),
@@ -86,7 +81,7 @@ def display_message(raw_message: str):
             roster = ', '.join(
                 '{}={} ({})'.format(
                     player.get('username'),
-                    COLOR_LABELS.get(player.get('color'), player.get('color')),
+                    color_display_name(player.get('color')),
                     player.get('rating'),
                 )
                 for player in players

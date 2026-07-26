@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Tuple
 
+from constants import PieceColor, PieceKind, opponent_color
 from engine.game_engine import GameEngine
 from server.move_parser import MoveCommandError, parse_move_command
 from shared.protocol import error_message, game_state_payload
@@ -28,7 +29,7 @@ class GameSession:
 
     def resign(self, loser_color: str) -> str:
         """End the game by resignation; returns winner color."""
-        winner_color = 'b' if loser_color == 'w' else 'w'
+        winner_color = opponent_color(loser_color)
         self.engine.game_state.game_over = True
         self._resign_winner_color = winner_color
         return winner_color
@@ -41,17 +42,18 @@ class GameSession:
         has_white_king = False
         has_black_king = False
         for piece in self.engine.game_state.board.all_pieces():
-            if piece.kind != 'K':
+            if piece.kind != PieceKind.KING.value:
                 continue
-            if piece.color == 'w':
+            if piece.color == PieceColor.WHITE.value:
                 has_white_king = True
-            elif piece.color == 'b':
+            elif piece.color == PieceColor.BLACK.value:
                 has_black_king = True
         if has_white_king and not has_black_king:
-            return 'w'
+            return PieceColor.WHITE.value
         if has_black_king and not has_white_king:
-            return 'b'
+            return PieceColor.BLACK.value
         return None
+
 
 
 

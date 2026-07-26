@@ -1,10 +1,9 @@
 from typing import Any, Dict, List, Optional
 
+from constants import PieceColor
 from shared.messages.server_messages import PlayerInfo
 
 
-COLOR_WHITE = 'w'
-COLOR_BLACK = 'b'
 MAX_PLAYERS = 2
 
 
@@ -60,9 +59,9 @@ class Lobby:
         return self._players_by_connection.get(connection)
 
     def get_by_color(self, color: str) -> Optional[Player]:
-        if color == COLOR_WHITE:
+        if color == PieceColor.WHITE.value:
             return self._seat_white
-        if color == COLOR_BLACK:
+        if color == PieceColor.BLACK.value:
             return self._seat_black
         return None
 
@@ -84,13 +83,13 @@ class Lobby:
         self.clear()
         white = Player(
             white_username,
-            COLOR_WHITE,
+            PieceColor.WHITE.value,
             white_rating,
             white_connection,
         )
         black = Player(
             black_username,
-            COLOR_BLACK,
+            PieceColor.BLACK.value,
             black_rating,
             black_connection,
         )

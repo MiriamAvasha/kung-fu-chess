@@ -18,7 +18,7 @@ class Board:
         return 0 <= position.row < self.height and 0 <= position.col < self.width
 
     def get_pawn_start_row(self, color: str) -> int:
-        if color == 'w':
+        if color == constants.PieceColor.WHITE.value:
             return self.height - 1 - PAWN_START_ROW_OFFSET
         return PAWN_START_ROW_OFFSET
 
