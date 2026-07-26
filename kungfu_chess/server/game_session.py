@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from engine.game_engine import GameEngine
 from server.move_parser import MoveCommandError, parse_move_command
@@ -20,6 +20,29 @@ class GameSession:
             'type': 'game_state',
             'state': game_state_payload(self.engine),
         }
+
+    @property
+    def is_game_over(self) -> bool:
+        return self.engine.game_state.game_over
+
+    def winner_color(self) -> Optional[str]:
+        if not self.is_game_over:
+            return None
+        has_white_king = False
+        has_black_king = False
+        for piece in self.engine.game_state.board.all_pieces():
+            if piece.kind != 'K':
+                continue
+            if piece.color == 'w':
+                has_white_king = True
+            elif piece.color == 'b':
+                has_black_king = True
+        if has_white_king and not has_black_king:
+            return 'w'
+        if has_black_king and not has_white_king:
+            return 'b'
+        return None
+
 
     def handle_command(
         self,

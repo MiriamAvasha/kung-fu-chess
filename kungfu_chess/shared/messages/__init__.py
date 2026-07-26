@@ -16,12 +16,14 @@ from shared.messages.parsers import (
     parse_join_request,
     parse_move_request,
     parse_player_info,
+    parse_rating_update,
     parse_server_message,
 )
 from shared.messages.server_messages import (
     ErrorMessage,
     JoinAccepted,
     PlayerInfo,
+    RatingUpdate,
 )
 
 __all__ = [
@@ -32,6 +34,7 @@ __all__ = [
     'MoveRequest',
     'PlayerInfo',
     'ProtocolError',
+    'RatingUpdate',
     'ServerMessage',
     'message_to_dict',
     'parse_client_message',
@@ -40,5 +43,6 @@ __all__ = [
     'parse_join_request',
     'parse_move_request',
     'parse_player_info',
+    'parse_rating_update',
     'parse_server_message',
 ]

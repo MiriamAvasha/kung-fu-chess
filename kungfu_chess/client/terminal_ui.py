@@ -52,23 +52,37 @@ def display_message(raw_message: str):
     if message_type == 'join_accepted':
         color = COLOR_LABELS.get(message.get('color'), message.get('color'))
         print(
-            'Joined as {} ({})'.format(
+            'Joined as {} ({}) — rating {}'.format(
                 message.get('username'),
                 color,
+                message.get('rating'),
             )
         )
         players = message.get('players') or []
         if players:
             roster = ', '.join(
-                '{}={}'.format(
+                '{}={} ({})'.format(
                     player.get('username'),
                     COLOR_LABELS.get(player.get('color'), player.get('color')),
+                    player.get('rating'),
                 )
                 for player in players
             )
             print('Players: {}'.format(roster))
         if len(players) < 2:
             print('Waiting for second player...')
+        return
+
+    if message_type == 'rating_update':
+        ratings = message.get('ratings') or {}
+        print(
+            'Match result: {} beat {}'.format(
+                message.get('winner'),
+                message.get('loser'),
+            )
+        )
+        for username, rating in ratings.items():
+            print('  {} -> rating {}'.format(username, rating))
         return
 
     if message_type == 'move_result':

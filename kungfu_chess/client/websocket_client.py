@@ -3,7 +3,7 @@ import asyncio
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from client.home_screen import prompt_username
+from client.home_screen import prompt_credentials
 from client.terminal_ui import display_message
 from shared.messages.client_messages import JoinRequest, MoveRequest
 from shared.protocol import decode_message, encode_message
@@ -34,8 +34,10 @@ async def receive_messages(websocket):
         display_message(raw_message)
 
 
-async def join_lobby(websocket, username: str) -> bool:
-    await websocket.send(encode_message(JoinRequest(username).to_dict()))
+async def join_lobby(websocket, username: str, password: str) -> bool:
+    await websocket.send(
+        encode_message(JoinRequest(username, password).to_dict())
+    )
     raw_message = await websocket.recv()
     display_message(raw_message)
 
@@ -47,11 +49,11 @@ async def join_lobby(websocket, username: str) -> bool:
 
 
 async def main(uri: str = URI):
-    username = prompt_username()
+    username, password = prompt_credentials()
     try:
         async with websockets.connect(uri) as websocket:
             print(f'Connected to {uri}')
-            joined = await join_lobby(websocket, username)
+            joined = await join_lobby(websocket, username, password)
             if not joined:
                 print('Could not join lobby.')
                 return

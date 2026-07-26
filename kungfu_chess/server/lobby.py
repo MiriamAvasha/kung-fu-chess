@@ -17,13 +17,20 @@ class LobbyError(Exception):
 
 
 class Player:
-    def __init__(self, username: str, color: str, connection: Any):
+    def __init__(
+        self,
+        username: str,
+        color: str,
+        rating: int,
+        connection: Any,
+    ):
         self.username = username
         self.color = color
+        self.rating = rating
         self.connection = connection
 
     def to_info(self) -> PlayerInfo:
-        return PlayerInfo(self.username, self.color)
+        return PlayerInfo(self.username, self.color, self.rating)
 
 
 class Lobby:
@@ -53,10 +60,22 @@ class Lobby:
     def get_player(self, connection: Any) -> Optional[Player]:
         return self._players_by_connection.get(connection)
 
+    def get_by_color(self, color: str) -> Optional[Player]:
+        if color == COLOR_WHITE:
+            return self._seat_white
+        if color == COLOR_BLACK:
+            return self._seat_black
+        return None
+
     def player_infos(self) -> List[PlayerInfo]:
         return [player.to_info() for player in self.players]
 
-    def try_join(self, username: str, connection: Any) -> Player:
+    def try_join(
+        self,
+        username: str,
+        rating: int,
+        connection: Any,
+    ) -> Player:
         if connection in self._players_by_connection:
             raise LobbyError(
                 'already_joined',
@@ -83,13 +102,18 @@ class Lobby:
         else:
             color = COLOR_BLACK
 
-        player = Player(normalized, color, connection)
+        player = Player(normalized, color, rating, connection)
         if color == COLOR_WHITE:
             self._seat_white = player
         else:
             self._seat_black = player
         self._players_by_connection[connection] = player
         return player
+
+    def update_ratings(self, ratings: Dict[str, int]) -> None:
+        for player in self.players:
+            if player.username in ratings:
+                player.rating = ratings[player.username]
 
     def leave(self, connection: Any) -> Optional[Player]:
         player = self._players_by_connection.pop(connection, None)

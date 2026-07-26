@@ -6,12 +6,13 @@ from shared.messages.server_messages import (
     ErrorMessage,
     JoinAccepted,
     PlayerInfo,
+    RatingUpdate,
 )
 from shared.protocol import decode_message
 
 
 ClientMessage = Union[JoinRequest, MoveRequest]
-ServerMessage = Union[JoinAccepted, ErrorMessage]
+ServerMessage = Union[JoinAccepted, ErrorMessage, RatingUpdate]
 
 
 def parse_player_info(data: Any) -> PlayerInfo:
@@ -19,16 +20,22 @@ def parse_player_info(data: Any) -> PlayerInfo:
         raise ProtocolError('player must be an object')
     username = data.get('username')
     color = data.get('color')
+    rating = data.get('rating')
     if not isinstance(username, str) or not isinstance(color, str):
         raise ProtocolError('player.username and player.color must be strings')
-    return PlayerInfo(username, color)
+    if not isinstance(rating, int):
+        raise ProtocolError('player.rating must be an integer')
+    return PlayerInfo(username, color, rating)
 
 
 def parse_join_request(data: Dict[str, Any]) -> JoinRequest:
     username = data.get('username')
+    password = data.get('password')
     if not isinstance(username, str):
         raise ProtocolError('join.username must be a string')
-    return JoinRequest(username)
+    if not isinstance(password, str):
+        raise ProtocolError('join.password must be a string')
+    return JoinRequest(username, password)
 
 
 def parse_move_request(data: Dict[str, Any]) -> MoveRequest:
@@ -41,15 +48,38 @@ def parse_move_request(data: Dict[str, Any]) -> MoveRequest:
 def parse_join_accepted(data: Dict[str, Any]) -> JoinAccepted:
     username = data.get('username')
     color = data.get('color')
+    rating = data.get('rating')
     players_raw = data.get('players')
     if not isinstance(username, str) or not isinstance(color, str):
         raise ProtocolError(
             'join_accepted.username and join_accepted.color must be strings'
         )
+    if not isinstance(rating, int):
+        raise ProtocolError('join_accepted.rating must be an integer')
     if not isinstance(players_raw, list):
         raise ProtocolError('join_accepted.players must be a list')
     players = [parse_player_info(item) for item in players_raw]
-    return JoinAccepted(username, color, players)
+    return JoinAccepted(username, color, rating, players)
+
+
+def parse_rating_update(data: Dict[str, Any]) -> RatingUpdate:
+    winner = data.get('winner')
+    loser = data.get('loser')
+    ratings = data.get('ratings')
+    if not isinstance(winner, str) or not isinstance(loser, str):
+        raise ProtocolError(
+            'rating_update.winner and rating_update.loser must be strings'
+        )
+    if not isinstance(ratings, dict):
+        raise ProtocolError('rating_update.ratings must be an object')
+    normalized = {}
+    for key, value in ratings.items():
+        if not isinstance(key, str) or not isinstance(value, int):
+            raise ProtocolError(
+                'rating_update.ratings must map usernames to integers'
+            )
+        normalized[key] = value
+    return RatingUpdate(winner, loser, normalized)
 
 
 def parse_error_message(data: Dict[str, Any]) -> ErrorMessage:
@@ -85,6 +115,8 @@ def parse_server_message(raw_message: str) -> ServerMessage:
     message_type = data.get('type')
     if message_type == JoinAccepted.TYPE:
         return parse_join_accepted(data)
+    if message_type == RatingUpdate.TYPE:
+        return parse_rating_update(data)
     if message_type == ErrorMessage.TYPE:
         return parse_error_message(data)
     raise ProtocolError(

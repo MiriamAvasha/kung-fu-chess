@@ -1,8 +1,11 @@
 import asyncio
 import json
+import sqlite3
 
 import websockets
 
+from server.auth import AuthService, UserRepository
+from server.rating import RatingService
 from server.websocket_server import GameServer
 from shared.messages.client_messages import JoinRequest, MoveRequest
 from shared.protocol import encode_message
@@ -13,15 +16,24 @@ async def receive_json(websocket):
     return json.loads(raw_message)
 
 
-async def join_as(websocket, username):
+async def join_as(websocket, username, password='pass1234'):
     await websocket.send(
-        encode_message(JoinRequest(username).to_dict())
+        encode_message(JoinRequest(username, password).to_dict())
     )
     return await receive_json(websocket)
 
 
+def build_test_server():
+    connection = sqlite3.connect(':memory:', check_same_thread=False)
+    repository = UserRepository(connection)
+    return GameServer(
+        auth_service=AuthService(repository),
+        rating_service=RatingService(repository),
+    )
+
+
 async def websocket_game_scenario():
-    game_server = GameServer()
+    game_server = build_test_server()
     async with websockets.serve(
         game_server.handle_client,
         '127.0.0.1',
@@ -34,11 +46,13 @@ async def websocket_game_scenario():
             first_join = await join_as(first_client, 'Alice')
             assert first_join['type'] == 'join_accepted'
             assert first_join['color'] == 'w'
+            assert first_join['rating'] == 1200
 
             async with websockets.connect(uri) as second_client:
                 second_join = await join_as(second_client, 'Bob')
                 assert second_join['type'] == 'join_accepted'
                 assert second_join['color'] == 'b'
+                assert second_join['rating'] == 1200
 
                 first_initial = await receive_json(first_client)
                 second_initial = await receive_json(second_client)
@@ -68,8 +82,8 @@ async def websocket_game_scenario():
                 assert first_arrival['state']['active_motions'] == []
 
 
-async def websocket_rejects_third_player_and_wrong_color():
-    game_server = GameServer()
+async def websocket_rejects_third_player_wrong_color_and_bad_password():
+    game_server = build_test_server()
     async with websockets.serve(
         game_server.handle_client,
         '127.0.0.1',
@@ -98,10 +112,15 @@ async def websocket_rejects_third_player_and_wrong_color():
                 assert wrong_color['accepted'] is False
                 assert wrong_color['reason'] == 'wrong_color'
 
+        async with websockets.connect(uri) as retry_client:
+            bad_login = await join_as(retry_client, 'Alice', 'wrongpass')
+            assert bad_login['type'] == 'error'
+            assert bad_login['code'] == 'invalid_credentials'
+
 
 def test_two_clients_receive_the_same_authoritative_state():
     asyncio.run(websocket_game_scenario())
 
 
 def test_third_player_rejected_and_color_enforced():
-    asyncio.run(websocket_rejects_third_player_and_wrong_color())
+    asyncio.run(websocket_rejects_third_player_wrong_color_and_bad_password())

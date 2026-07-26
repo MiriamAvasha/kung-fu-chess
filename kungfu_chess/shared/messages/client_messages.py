@@ -4,13 +4,15 @@ from typing import Any, Dict
 class JoinRequest:
     TYPE = 'join'
 
-    def __init__(self, username: str):
+    def __init__(self, username: str, password: str):
         self.username = username
+        self.password = password
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             'type': self.TYPE,
             'username': self.username,
+            'password': self.password,
         }
 
 
