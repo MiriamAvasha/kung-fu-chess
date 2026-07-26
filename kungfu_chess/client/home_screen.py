@@ -10,7 +10,7 @@ def print_home_banner():
     print('       Kung Fu Chess')
     print('==============================')
     print('Terminal home — login or register.')
-    print('First player is White, second is Black.')
+    print('Then press Play to find an opponent (ELO +/- 100).')
     print('Username: 1-20 letters, digits, or underscore.')
     print('Password: at least 4 characters.')
     print('New accounts start at rating 1200.')
@@ -33,3 +33,16 @@ def prompt_credentials() -> Tuple[str, str]:
             continue
 
         return username, password
+
+
+def prompt_play() -> bool:
+    print()
+    print('[Play] Search for an opponent within ELO +/- 100')
+    print('       Wait up to 60 seconds. Type /quit to exit.')
+    while True:
+        choice = input('Press Enter to Play (or /quit): ').strip()
+        if choice.lower() == '/quit':
+            return False
+        if choice == '' or choice.lower() in ('play', 'p'):
+            return True
+        print('Type Enter/Play to search, or /quit to exit.')

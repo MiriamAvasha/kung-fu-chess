@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional
 
 from shared.messages.server_messages import PlayerInfo
-from shared.username import validate_username
 
 
 COLOR_WHITE = 'w'
@@ -70,45 +69,35 @@ class Lobby:
     def player_infos(self) -> List[PlayerInfo]:
         return [player.to_info() for player in self.players]
 
-    def try_join(
+    def seat_match(
         self,
-        username: str,
-        rating: int,
-        connection: Any,
-    ) -> Player:
-        if connection in self._players_by_connection:
-            raise LobbyError(
-                'already_joined',
-                'this connection already joined the lobby',
-            )
+        white_username: str,
+        white_rating: int,
+        white_connection: Any,
+        black_username: str,
+        black_rating: int,
+        black_connection: Any,
+    ) -> None:
+        if self.is_ready():
+            raise LobbyError('room_full', 'a match is already in progress')
 
-        ok, result = validate_username(username)
-        if not ok:
-            raise LobbyError('invalid_username', result)
-
-        normalized = result
-        for player in self.players:
-            if player.username.lower() == normalized.lower():
-                raise LobbyError(
-                    'username_taken',
-                    'username is already taken',
-                )
-
-        if self.is_full():
-            raise LobbyError('room_full', 'lobby supports only 2 players')
-
-        if self._seat_white is None:
-            color = COLOR_WHITE
-        else:
-            color = COLOR_BLACK
-
-        player = Player(normalized, color, rating, connection)
-        if color == COLOR_WHITE:
-            self._seat_white = player
-        else:
-            self._seat_black = player
-        self._players_by_connection[connection] = player
-        return player
+        self.clear()
+        white = Player(
+            white_username,
+            COLOR_WHITE,
+            white_rating,
+            white_connection,
+        )
+        black = Player(
+            black_username,
+            COLOR_BLACK,
+            black_rating,
+            black_connection,
+        )
+        self._seat_white = white
+        self._seat_black = black
+        self._players_by_connection[white_connection] = white
+        self._players_by_connection[black_connection] = black
 
     def update_ratings(self, ratings: Dict[str, int]) -> None:
         for player in self.players:
@@ -124,3 +113,8 @@ class Lobby:
         if self._seat_black is player:
             self._seat_black = None
         return player
+
+    def clear(self) -> None:
+        self._players_by_connection.clear()
+        self._seat_white = None
+        self._seat_black = None

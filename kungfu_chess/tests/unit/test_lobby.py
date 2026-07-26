@@ -1,13 +1,17 @@
 import pytest
 
 from server.lobby import Lobby, LobbyError
-from shared.messages.client_messages import JoinRequest, MoveRequest
+from shared.messages.client_messages import JoinRequest, MoveRequest, PlayRequest
 from shared.messages.errors import ProtocolError
 from shared.messages.parsers import parse_client_message, parse_server_message
 from shared.messages.server_messages import (
+    DisconnectCountdown,
     ErrorMessage,
     JoinAccepted,
+    MatchFound,
+    NoMatch,
     PlayerInfo,
+    QueueStatus,
     RatingUpdate,
 )
 from shared.protocol import encode_message
@@ -31,59 +35,45 @@ def test_validate_username(raw, expected_ok):
     assert ok is expected_ok
 
 
-def test_lobby_assigns_white_then_black_with_ratings():
+def test_lobby_seats_matched_players():
     lobby = Lobby()
-    first = lobby.try_join('Alice', 1200, connection='c1')
-    second = lobby.try_join('Bob', 1300, connection='c2')
+    lobby.seat_match('Alice', 1200, 'c1', 'Bob', 1300, 'c2')
 
-    assert first.color == 'w'
-    assert first.rating == 1200
-    assert second.color == 'b'
-    assert second.rating == 1300
+    white = lobby.get_by_color('w')
+    black = lobby.get_by_color('b')
+    assert white.username == 'Alice'
+    assert white.rating == 1200
+    assert black.username == 'Bob'
+    assert black.rating == 1300
     assert lobby.is_ready() is True
 
 
-def test_lobby_rejects_third_player():
+def test_lobby_rejects_second_match_while_ready():
     lobby = Lobby()
-    lobby.try_join('Alice', 1200, connection='c1')
-    lobby.try_join('Bob', 1200, connection='c2')
+    lobby.seat_match('Alice', 1200, 'c1', 'Bob', 1200, 'c2')
 
     with pytest.raises(LobbyError) as error:
-        lobby.try_join('Carol', 1200, connection='c3')
+        lobby.seat_match('Carol', 1200, 'c3', 'Dave', 1200, 'c4')
     assert error.value.code == 'room_full'
-
-
-def test_lobby_rejects_taken_username_and_already_joined():
-    lobby = Lobby()
-    lobby.try_join('Alice', 1200, connection='c1')
-
-    with pytest.raises(LobbyError) as taken:
-        lobby.try_join('alice', 1200, connection='c2')
-    assert taken.value.code == 'username_taken'
-
-    with pytest.raises(LobbyError) as joined:
-        lobby.try_join('Bob', 1200, connection='c1')
-    assert joined.value.code == 'already_joined'
 
 
 def test_lobby_leave_frees_seat():
     lobby = Lobby()
-    lobby.try_join('Alice', 1200, connection='c1')
-    lobby.try_join('Bob', 1200, connection='c2')
+    lobby.seat_match('Alice', 1200, 'c1', 'Bob', 1200, 'c2')
     lobby.leave('c1')
-
-    replacement = lobby.try_join('Carol', 1250, connection='c3')
-    assert replacement.color == 'w'
-    assert lobby.is_ready() is True
+    assert lobby.get_by_color('w') is None
+    assert lobby.get_by_color('b').username == 'Bob'
 
 
-def test_join_and_move_message_roundtrip():
+def test_join_play_and_move_message_roundtrip():
     join = JoinRequest('Alice', 'pass1234')
+    play = PlayRequest()
     move = MoveRequest('WPe2e4')
 
     parsed_join = parse_client_message(encode_message(join.to_dict()))
     assert parsed_join.username == 'Alice'
     assert parsed_join.password == 'pass1234'
+    assert parse_client_message(encode_message(play.to_dict())).TYPE == 'play'
     assert parse_client_message(encode_message(move.to_dict())).command == 'WPe2e4'
 
 
@@ -92,32 +82,46 @@ def test_parse_client_message_rejects_unknown_type():
         parse_client_message('{"type":"jump"}')
 
 
-def test_join_accepted_error_and_rating_update_roundtrip():
-    accepted = JoinAccepted(
+def test_server_message_roundtrips():
+    accepted = JoinAccepted('Alice', 1200)
+    parsed_accepted = parse_server_message(encode_message(accepted.to_dict()))
+    assert parsed_accepted.username == 'Alice'
+    assert parsed_accepted.rating == 1200
+
+    queue = QueueStatus(60, 100)
+    parsed_queue = parse_server_message(encode_message(queue.to_dict()))
+    assert parsed_queue.timeout_seconds == 60
+
+    match = MatchFound(
         'Alice',
         'w',
         1200,
-        [PlayerInfo('Alice', 'w', 1200)],
+        [PlayerInfo('Alice', 'w', 1200), PlayerInfo('Bob', 'b', 1210)],
     )
-    parsed_accepted = parse_server_message(
-        encode_message(accepted.to_dict())
+    parsed_match = parse_server_message(encode_message(match.to_dict()))
+    assert parsed_match.color == 'w'
+    assert len(parsed_match.players) == 2
+
+    no_match = NoMatch('no player found')
+    assert parse_server_message(encode_message(no_match.to_dict())).TYPE == 'no_match'
+
+    countdown = DisconnectCountdown('Alice', 15, 20)
+    parsed_countdown = parse_server_message(
+        encode_message(countdown.to_dict())
     )
-    assert parsed_accepted.username == 'Alice'
-    assert parsed_accepted.color == 'w'
-    assert parsed_accepted.rating == 1200
-    assert parsed_accepted.players[0].rating == 1200
+    assert parsed_countdown.seconds_remaining == 15
 
     error = ErrorMessage('room_full', 'lobby supports only 2 players')
-    parsed_error = parse_server_message(encode_message(error.to_dict()))
-    assert parsed_error.code == 'room_full'
+    assert parse_server_message(encode_message(error.to_dict())).code == 'room_full'
 
     rating_update = RatingUpdate(
         winner='Alice',
         loser='Bob',
         ratings={'Alice': 1216, 'Bob': 1184},
+        reason='auto_resign',
     )
     parsed_ratings = parse_server_message(
         encode_message(rating_update.to_dict())
     )
-    assert parsed_ratings.winner == 'Alice'
+    assert parsed_ratings.reason == 'auto_resign'
     assert parsed_ratings.ratings['Bob'] == 1184

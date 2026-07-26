@@ -8,6 +8,7 @@ from shared.protocol import error_message, game_state_payload
 class GameSession:
     def __init__(self, engine: GameEngine):
         self.engine = engine
+        self._resign_winner_color: Optional[str] = None
 
     def initial_message(self) -> Dict[str, Any]:
         return {
@@ -25,9 +26,18 @@ class GameSession:
     def is_game_over(self) -> bool:
         return self.engine.game_state.game_over
 
+    def resign(self, loser_color: str) -> str:
+        """End the game by resignation; returns winner color."""
+        winner_color = 'b' if loser_color == 'w' else 'w'
+        self.engine.game_state.game_over = True
+        self._resign_winner_color = winner_color
+        return winner_color
+
     def winner_color(self) -> Optional[str]:
         if not self.is_game_over:
             return None
+        if self._resign_winner_color is not None:
+            return self._resign_winner_color
         has_white_king = False
         has_black_king = False
         for piece in self.engine.game_state.board.all_pieces():
@@ -42,6 +52,7 @@ class GameSession:
         if has_black_king and not has_white_king:
             return 'b'
         return None
+
 
 
     def handle_command(

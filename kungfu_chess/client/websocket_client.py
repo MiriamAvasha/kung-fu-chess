@@ -3,9 +3,9 @@ import asyncio
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from client.home_screen import prompt_credentials
+from client.home_screen import prompt_credentials, prompt_play
 from client.terminal_ui import display_message
-from shared.messages.client_messages import JoinRequest, MoveRequest
+from shared.messages.client_messages import JoinRequest, MoveRequest, PlayRequest
 from shared.protocol import decode_message, encode_message
 
 
@@ -34,7 +34,7 @@ async def receive_messages(websocket):
         display_message(raw_message)
 
 
-async def join_lobby(websocket, username: str, password: str) -> bool:
+async def login(websocket, username: str, password: str) -> bool:
     await websocket.send(
         encode_message(JoinRequest(username, password).to_dict())
     )
@@ -48,14 +48,41 @@ async def join_lobby(websocket, username: str, password: str) -> bool:
     return message.get('type') == 'join_accepted'
 
 
+async def wait_for_match(websocket) -> bool:
+    await websocket.send(encode_message(PlayRequest().to_dict()))
+    while True:
+        raw_message = await websocket.recv()
+        display_message(raw_message)
+        try:
+            message = decode_message(raw_message)
+        except (TypeError, ValueError):
+            return False
+
+        message_type = message.get('type')
+        if message_type == 'match_found':
+            return True
+        if message_type == 'initial_state':
+            return True
+        if message_type in ('no_match', 'error'):
+            return False
+        # queue_status and other updates keep waiting
+
+
 async def main(uri: str = URI):
     username, password = prompt_credentials()
     try:
         async with websockets.connect(uri) as websocket:
             print(f'Connected to {uri}')
-            joined = await join_lobby(websocket, username, password)
-            if not joined:
-                print('Could not join lobby.')
+            if not await login(websocket, username, password):
+                print('Could not log in.')
+                return
+
+            if not prompt_play():
+                return
+
+            matched = await wait_for_match(websocket)
+            if not matched:
+                print('Could not start a match.')
                 return
 
             receiver = asyncio.create_task(receive_messages(websocket))

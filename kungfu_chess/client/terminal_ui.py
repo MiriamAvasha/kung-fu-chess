@@ -50,9 +50,32 @@ def display_message(raw_message: str):
         return
 
     if message_type == 'join_accepted':
+        print(
+            'Logged in as {} — rating {}'.format(
+                message.get('username'),
+                message.get('rating'),
+            )
+        )
+        return
+
+    if message_type == 'queue_status':
+        print(
+            'Searching for opponent (ELO +/- {}, timeout {}s)...'.format(
+                message.get('elo_range'),
+                message.get('timeout_seconds'),
+            )
+        )
+        return
+
+    if message_type == 'no_match':
+        print('No player found.')
+        print(message.get('message', 'no player found'))
+        return
+
+    if message_type == 'match_found':
         color = COLOR_LABELS.get(message.get('color'), message.get('color'))
         print(
-            'Joined as {} ({}) — rating {}'.format(
+            'Match found! You are {} ({}) — rating {}'.format(
                 message.get('username'),
                 color,
                 message.get('rating'),
@@ -69,14 +92,23 @@ def display_message(raw_message: str):
                 for player in players
             )
             print('Players: {}'.format(roster))
-        if len(players) < 2:
-            print('Waiting for second player...')
+        return
+
+    if message_type == 'disconnect_countdown':
+        print(
+            'Opponent disconnected countdown: {} — {}s remaining'.format(
+                message.get('username'),
+                message.get('seconds_remaining'),
+            )
+        )
         return
 
     if message_type == 'rating_update':
         ratings = message.get('ratings') or {}
+        reason = message.get('reason') or 'game_over'
         print(
-            'Match result: {} beat {}'.format(
+            'Match result ({}): {} beat {}'.format(
+                reason,
                 message.get('winner'),
                 message.get('loser'),
             )

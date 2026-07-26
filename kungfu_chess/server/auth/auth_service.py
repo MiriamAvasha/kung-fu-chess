@@ -1,3 +1,5 @@
+from typing import Optional
+
 from server.auth.password_hasher import hash_password, verify_password
 from server.auth.user import UserAccount
 from server.auth.user_repository import UserRepository
@@ -17,6 +19,9 @@ class AuthService:
 
     def __init__(self, repository: UserRepository):
         self._repository = repository
+
+    def get_account(self, username: str) -> Optional[UserAccount]:
+        return self._repository.get_by_username(username)
 
     def login_or_register(self, username: str, password: str) -> UserAccount:
         ok_username, username_result = validate_username(username)

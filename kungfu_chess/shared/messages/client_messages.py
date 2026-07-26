@@ -16,6 +16,15 @@ class JoinRequest:
         }
 
 
+class PlayRequest:
+    TYPE = 'play'
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'type': self.TYPE,
+        }
+
+
 class MoveRequest:
     TYPE = 'move'
 
