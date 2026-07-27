@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
 import time
-from typing import Any, Dict, Optional, Set
+from typing import Any, Awaitable, Callable, Dict, Optional, Set, Type
 
 import websockets
 from websockets.exceptions import ConnectionClosed
@@ -39,6 +39,8 @@ PORT = 8765
 TICK_SECONDS = 0.05
 AUTO_RESIGN_SECONDS = 20
 
+ClientHandler = Callable[[Any, Any], Awaitable[None]]
+
 
 class GameServer:
     def __init__(
@@ -72,6 +74,12 @@ class GameServer:
             self._auth_service = auth_service or AuthService(repository)
             self._rating_service = rating_service or RatingService(repository)
 
+        self._client_handlers: Dict[Type, ClientHandler] = {
+            JoinRequest: self._handle_join,
+            PlayRequest: self._handle_play,
+            MoveRequest: self._handle_move,
+        }
+
     async def handle_client(self, websocket):
         self.clients.add(websocket)
         print('Client connected')
@@ -96,12 +104,17 @@ class GameServer:
                     )
                     continue
 
-                if isinstance(message, JoinRequest):
-                    await self._handle_join(websocket, message)
-                elif isinstance(message, PlayRequest):
-                    await self._handle_play(websocket)
-                elif isinstance(message, MoveRequest):
-                    await self._handle_move(websocket, message)
+                handler = self._client_handlers.get(type(message))
+                if handler is None:
+                    await self._send(
+                        websocket,
+                        ErrorMessage(
+                            'invalid_command',
+                            'unsupported message type',
+                        ).to_dict(),
+                    )
+                    continue
+                await handler(websocket, message)
         except ConnectionClosed:
             pass
         finally:
@@ -144,7 +157,7 @@ class GameServer:
             )
         )
 
-    async def _handle_play(self, websocket):
+    async def _handle_play(self, websocket, message: PlayRequest):
         account = self._accounts.get(websocket)
         if account is None:
             await self._send(
