@@ -1,11 +1,54 @@
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
-from constants import color_display_name
+import asyncio
+
+from constants import PieceColor, color_display_name
 from shared.messages.types import ServerMessageType
 from shared.protocol import decode_message
 
 
 MessageHandler = Callable[[Dict[str, Any]], None]
+
+_ui_lock = asyncio.Lock()
+_current_room_id: Optional[str] = None
+_current_role: Optional[str] = None
+
+
+def get_current_room_id() -> Optional[str]:
+    return _current_room_id
+
+
+def get_current_role() -> Optional[str]:
+    return _current_role
+
+
+def move_prompt() -> str:
+    role = get_current_role()
+    if role == PieceColor.WHITE.value:
+        return 'Move as White (e.g. WPe2e4, or /quit): '
+    if role == PieceColor.BLACK.value:
+        return 'Move as Black (e.g. BPe7e5, or /quit): '
+    return 'Move (for example WPe2e4, or /quit): '
+
+
+def spectator_prompt() -> str:
+    return 'Spectating (type /quit to exit): '
+
+
+async def display_message_async(
+    raw_message: str,
+    reprompt: Optional[str] = None,
+):
+    """Show a server message without interleaving with input prompts."""
+    async with _ui_lock:
+        display_message(raw_message)
+        if reprompt:
+            print(reprompt, end='', flush=True)
+
+def _set_room(room_id: Optional[str], role: Optional[str] = None):
+    global _current_room_id, _current_role
+    _current_room_id = room_id
+    _current_role = role
 
 
 def print_board(state: Dict[str, Any]):
@@ -64,6 +107,10 @@ def _show_no_match(message: Dict[str, Any]):
 
 
 def _show_match_found(message: Dict[str, Any]):
+    room_id = message.get('room_id')
+    if room_id:
+        _set_room(room_id, message.get('color'))
+        print('Room: {}'.format(room_id))
     color = color_display_name(message.get('color'))
     print(
         'Match found! You are {} ({}) — rating {}'.format(
@@ -84,6 +131,52 @@ def _show_match_found(message: Dict[str, Any]):
         for player in players
     )
     print('Players: {}'.format(roster))
+
+
+def _role_label(role: Optional[str]) -> str:
+    if role == 'viewer':
+        return 'Viewer'
+    return color_display_name(role)
+
+
+def _show_room_created(message: Dict[str, Any]):
+    room_id = message.get('room_id')
+    role = message.get('role')
+    _set_room(room_id, role)
+    print()
+    print('==============================')
+    print('       Kung Fu Chess')
+    print('       Room: {}'.format(room_id))
+    print('       Role: {}'.format(_role_label(role)))
+    print('==============================')
+    print(
+        'Room created. Waiting for an opponent (you are White).'
+    )
+
+
+def _show_room_joined(message: Dict[str, Any]):
+    room_id = message.get('room_id')
+    role = message.get('role')
+    _set_room(room_id, role)
+    print()
+    print('==============================')
+    print('       Kung Fu Chess')
+    print('       Room: {}'.format(room_id))
+    print('       Role: {}'.format(_role_label(role)))
+    print('==============================')
+    members = message.get('members') or []
+    roster = ', '.join(
+        '{}={}'.format(
+            member.get('username'),
+            _role_label(member.get('color')),
+        )
+        for member in members
+    )
+    print('Members: {}'.format(roster))
+    if message.get('game_started'):
+        print('Game in progress.')
+    elif role == 'w':
+        print('Waiting for Black to join...')
 
 
 def _show_disconnect_countdown(message: Dict[str, Any]):
@@ -118,6 +211,8 @@ def _show_move_result(message: Dict[str, Any]):
             message.get('reason'),
         )
     )
+    if message.get('accepted') and message.get('state'):
+        print_board(message['state'])
 
 
 def _show_board_state(message: Dict[str, Any]):
@@ -132,6 +227,8 @@ MESSAGE_HANDLERS: Dict[str, MessageHandler] = {
     ServerMessageType.QUEUE_STATUS: _show_queue_status,
     ServerMessageType.NO_MATCH: _show_no_match,
     ServerMessageType.MATCH_FOUND: _show_match_found,
+    ServerMessageType.ROOM_CREATED: _show_room_created,
+    ServerMessageType.ROOM_JOINED: _show_room_joined,
     ServerMessageType.DISCONNECT_COUNTDOWN: _show_disconnect_countdown,
     ServerMessageType.RATING_UPDATE: _show_rating_update,
     ServerMessageType.MOVE_RESULT: _show_move_result,

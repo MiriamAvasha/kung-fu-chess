@@ -1,6 +1,12 @@
 from typing import Any, Dict, Union
 
-from shared.messages.client_messages import JoinRequest, MoveRequest, PlayRequest
+from shared.messages.client_messages import (
+    CreateRoomRequest,
+    JoinRequest,
+    JoinRoomRequest,
+    MoveRequest,
+    PlayRequest,
+)
 from shared.messages.errors import ProtocolError
 from shared.messages.server_messages import (
     DisconnectCountdown,
@@ -11,16 +17,26 @@ from shared.messages.server_messages import (
     PlayerInfo,
     QueueStatus,
     RatingUpdate,
+    RoomCreated,
+    RoomJoined,
 )
 from shared.protocol import decode_message
 
 
-ClientMessage = Union[JoinRequest, PlayRequest, MoveRequest]
+ClientMessage = Union[
+    JoinRequest,
+    PlayRequest,
+    CreateRoomRequest,
+    JoinRoomRequest,
+    MoveRequest,
+]
 ServerMessage = Union[
     JoinAccepted,
     QueueStatus,
     MatchFound,
     NoMatch,
+    RoomCreated,
+    RoomJoined,
     DisconnectCountdown,
     ErrorMessage,
     RatingUpdate,
@@ -52,6 +68,17 @@ def parse_join_request(data: Dict[str, Any]) -> JoinRequest:
 
 def parse_play_request(data: Dict[str, Any]) -> PlayRequest:
     return PlayRequest()
+
+
+def parse_create_room_request(data: Dict[str, Any]) -> CreateRoomRequest:
+    return CreateRoomRequest()
+
+
+def parse_join_room_request(data: Dict[str, Any]) -> JoinRoomRequest:
+    room_id = data.get('room_id')
+    if not isinstance(room_id, str) or not room_id.strip():
+        raise ProtocolError('join_room.room_id must be a non-empty string')
+    return JoinRoomRequest(room_id.strip())
 
 
 def parse_move_request(data: Dict[str, Any]) -> MoveRequest:
@@ -86,6 +113,7 @@ def parse_match_found(data: Dict[str, Any]) -> MatchFound:
     color = data.get('color')
     rating = data.get('rating')
     players_raw = data.get('players')
+    room_id = data.get('room_id')
     if not isinstance(username, str) or not isinstance(color, str):
         raise ProtocolError(
             'match_found.username and match_found.color must be strings'
@@ -94,8 +122,10 @@ def parse_match_found(data: Dict[str, Any]) -> MatchFound:
         raise ProtocolError('match_found.rating must be an integer')
     if not isinstance(players_raw, list):
         raise ProtocolError('match_found.players must be a list')
+    if room_id is not None and not isinstance(room_id, str):
+        raise ProtocolError('match_found.room_id must be a string')
     players = [parse_player_info(item) for item in players_raw]
-    return MatchFound(username, color, rating, players)
+    return MatchFound(username, color, rating, players, room_id)
 
 
 def parse_no_match(data: Dict[str, Any]) -> NoMatch:
@@ -103,6 +133,52 @@ def parse_no_match(data: Dict[str, Any]) -> NoMatch:
     if not isinstance(message, str):
         raise ProtocolError('no_match.message must be a string')
     return NoMatch(message)
+
+
+def parse_room_created(data: Dict[str, Any]) -> RoomCreated:
+    room_id = data.get('room_id')
+    username = data.get('username')
+    role = data.get('role')
+    rating = data.get('rating')
+    members_raw = data.get('members')
+    if not isinstance(room_id, str) or not isinstance(username, str):
+        raise ProtocolError(
+            'room_created.room_id and username must be strings'
+        )
+    if not isinstance(role, str) or not isinstance(rating, int):
+        raise ProtocolError('room_created.role/rating invalid')
+    if not isinstance(members_raw, list):
+        raise ProtocolError('room_created.members must be a list')
+    members = [parse_player_info(item) for item in members_raw]
+    return RoomCreated(room_id, username, role, rating, members)
+
+
+def parse_room_joined(data: Dict[str, Any]) -> RoomJoined:
+    room_id = data.get('room_id')
+    username = data.get('username')
+    role = data.get('role')
+    rating = data.get('rating')
+    members_raw = data.get('members')
+    game_started = data.get('game_started')
+    if not isinstance(room_id, str) or not isinstance(username, str):
+        raise ProtocolError(
+            'room_joined.room_id and username must be strings'
+        )
+    if not isinstance(role, str) or not isinstance(rating, int):
+        raise ProtocolError('room_joined.role/rating invalid')
+    if not isinstance(members_raw, list):
+        raise ProtocolError('room_joined.members must be a list')
+    if not isinstance(game_started, bool):
+        raise ProtocolError('room_joined.game_started must be a boolean')
+    members = [parse_player_info(item) for item in members_raw]
+    return RoomJoined(
+        room_id,
+        username,
+        role,
+        rating,
+        members,
+        game_started,
+    )
 
 
 def parse_disconnect_countdown(data: Dict[str, Any]) -> DisconnectCountdown:
@@ -160,6 +236,10 @@ def parse_client_message(raw_message: str) -> ClientMessage:
         return parse_join_request(data)
     if message_type == PlayRequest.TYPE:
         return parse_play_request(data)
+    if message_type == CreateRoomRequest.TYPE:
+        return parse_create_room_request(data)
+    if message_type == JoinRoomRequest.TYPE:
+        return parse_join_room_request(data)
     if message_type == MoveRequest.TYPE:
         return parse_move_request(data)
     raise ProtocolError(
@@ -182,6 +262,10 @@ def parse_server_message(raw_message: str) -> ServerMessage:
         return parse_match_found(data)
     if message_type == NoMatch.TYPE:
         return parse_no_match(data)
+    if message_type == RoomCreated.TYPE:
+        return parse_room_created(data)
+    if message_type == RoomJoined.TYPE:
+        return parse_room_joined(data)
     if message_type == DisconnectCountdown.TYPE:
         return parse_disconnect_countdown(data)
     if message_type == RatingUpdate.TYPE:

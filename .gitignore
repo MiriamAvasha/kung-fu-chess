@@ -4,3 +4,4 @@ __pycache__/
 .vscode/
 *.db
 kungfu_chess/server/data/
+logs/

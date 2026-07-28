@@ -27,6 +27,28 @@ class PlayRequest:
         }
 
 
+class CreateRoomRequest:
+    TYPE = ClientMessageType.CREATE_ROOM
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'type': self.TYPE,
+        }
+
+
+class JoinRoomRequest:
+    TYPE = ClientMessageType.JOIN_ROOM
+
+    def __init__(self, room_id: str):
+        self.room_id = room_id
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'type': self.TYPE,
+            'room_id': self.room_id,
+        }
+
+
 class MoveRequest:
     TYPE = ClientMessageType.MOVE
 

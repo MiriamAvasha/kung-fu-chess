@@ -2,7 +2,13 @@ import pytest
 
 from constants import PieceColor
 from server.lobby import Lobby, LobbyError
-from shared.messages.client_messages import JoinRequest, MoveRequest, PlayRequest
+from shared.messages.client_messages import (
+    CreateRoomRequest,
+    JoinRequest,
+    JoinRoomRequest,
+    MoveRequest,
+    PlayRequest,
+)
 from shared.messages.errors import ProtocolError
 from shared.messages.parsers import parse_client_message, parse_server_message
 from shared.messages.server_messages import (
@@ -14,6 +20,8 @@ from shared.messages.server_messages import (
     PlayerInfo,
     QueueStatus,
     RatingUpdate,
+    RoomCreated,
+    RoomJoined,
 )
 from shared.protocol import encode_message
 from shared.username import validate_username
@@ -69,12 +77,21 @@ def test_lobby_leave_frees_seat():
 def test_join_play_and_move_message_roundtrip():
     join = JoinRequest('Alice', 'pass1234')
     play = PlayRequest()
+    create_room = CreateRoomRequest()
+    join_room = JoinRoomRequest('ABC123')
     move = MoveRequest('WPe2e4')
 
     parsed_join = parse_client_message(encode_message(join.to_dict()))
     assert parsed_join.username == 'Alice'
     assert parsed_join.password == 'pass1234'
     assert parse_client_message(encode_message(play.to_dict())).TYPE == 'play'
+    assert parse_client_message(
+        encode_message(create_room.to_dict())
+    ).TYPE == 'create_room'
+    parsed_join_room = parse_client_message(
+        encode_message(join_room.to_dict())
+    )
+    assert parsed_join_room.room_id == 'ABC123'
     assert parse_client_message(encode_message(move.to_dict())).command == 'WPe2e4'
 
 
@@ -129,3 +146,33 @@ def test_server_message_roundtrips():
     )
     assert parsed_ratings.reason == 'auto_resign'
     assert parsed_ratings.ratings['Bob'] == 1184
+
+    room_created = RoomCreated(
+        'ABC123',
+        'Alice',
+        PieceColor.WHITE.value,
+        1200,
+        [PlayerInfo('Alice', PieceColor.WHITE.value, 1200)],
+    )
+    parsed_created = parse_server_message(
+        encode_message(room_created.to_dict())
+    )
+    assert parsed_created.room_id == 'ABC123'
+    assert parsed_created.role == PieceColor.WHITE.value
+
+    room_joined = RoomJoined(
+        'ABC123',
+        'Bob',
+        PieceColor.BLACK.value,
+        1210,
+        [
+            PlayerInfo('Alice', PieceColor.WHITE.value, 1200),
+            PlayerInfo('Bob', PieceColor.BLACK.value, 1210),
+        ],
+        game_started=True,
+    )
+    parsed_joined = parse_server_message(
+        encode_message(room_joined.to_dict())
+    )
+    assert parsed_joined.game_started is True
+    assert parsed_joined.role == PieceColor.BLACK.value

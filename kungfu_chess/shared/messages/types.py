@@ -1,6 +1,8 @@
 class ClientMessageType:
     JOIN = 'join'
     PLAY = 'play'
+    CREATE_ROOM = 'create_room'
+    JOIN_ROOM = 'join_room'
     MOVE = 'move'
 
 
@@ -10,6 +12,8 @@ class ServerMessageType:
     QUEUE_STATUS = 'queue_status'
     MATCH_FOUND = 'match_found'
     NO_MATCH = 'no_match'
+    ROOM_CREATED = 'room_created'
+    ROOM_JOINED = 'room_joined'
     DISCONNECT_COUNTDOWN = 'disconnect_countdown'
     RATING_UPDATE = 'rating_update'
     MOVE_RESULT = 'move_result'
