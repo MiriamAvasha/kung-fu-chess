@@ -4,7 +4,6 @@
 .cursor
 .vscode
 *.md
-!requirements-server.txt
 
 # Python
 __pycache__
@@ -28,6 +27,7 @@ client
 KungFuChess.pyw
 ws_client.py
 tests
+requirements/client.txt
 
 # Docs / design (copied separately if needed; keep image small)
 docs

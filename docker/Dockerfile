@@ -20,7 +20,7 @@ RUN if [ ! -f /etc/ca-bundle.crt ]; then \
 
 WORKDIR /app
 
-COPY requirements-server.txt requirements.txt
+COPY requirements/server.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ws_server.py .
