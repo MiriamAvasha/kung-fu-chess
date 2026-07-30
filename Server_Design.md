@@ -140,13 +140,6 @@ flowchart TB
 תיאום או Telemetry. הפריסה מציגה את Clients למעלה, את שערי הכניסה מתחתיהם,
 את שירותי המשחק במרכז ואת שכבת הנתונים בתחתית.
 
-### תצוגה גרפית
-
-![Distributed Game Server Architecture](docs/images/server-architecture.png)
-
-*תרשים 1 — ארכיטקטורת שרת מבוזרת באזור Kubernetes/K3s יחיד. התמונה נוצרת
-ממקור ה-Mermaid שמופיע מעליה, ולכן ניתן לעדכן ולרנדר אותה מחדש.*
-
 ### החלטת Messaging
 
 - **NATS Core** מתאים להודעות פנימיות קצרות ומהירות כאשר אין צורך בשמירה.
