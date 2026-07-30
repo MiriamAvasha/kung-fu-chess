@@ -24,6 +24,7 @@ services:
       KUNGFU_PORT: "8765"
       KUNGFU_DB_PATH: "/data/kungfu_chess.db"
       KUNGFU_PERSISTENCE: "postgres"
+      KUNGFU_MATCHMAKING: "redis"
     volumes:
       - app_data:/data
     depends_on:

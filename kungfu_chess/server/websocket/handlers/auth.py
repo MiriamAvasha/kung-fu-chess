@@ -40,6 +40,8 @@ class AuthHandlers:
             return
 
         self.server.accounts[websocket] = account
+        if self.server.presence is not None:
+            self.server.presence.set_online(account.username)
         await self.server.send(
             websocket,
             JoinAccepted(account.username, account.rating),

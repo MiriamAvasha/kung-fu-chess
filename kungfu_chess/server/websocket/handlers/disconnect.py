@@ -14,6 +14,8 @@ class DisconnectHandler:
     async def handle(self, websocket: Any) -> None:
         self.server.matchmaker.remove(websocket)
         account = self.server.accounts.pop(websocket, None)
+        if account is not None and self.server.presence is not None:
+            self.server.presence.set_offline(account.username)
         room = self.server.rooms.get_by_connection(websocket)
         if room is None:
             if account is not None:

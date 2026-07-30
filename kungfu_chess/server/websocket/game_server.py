@@ -5,6 +5,8 @@ from websockets.exceptions import ConnectionClosed
 from server.auth import AuthService, UserAccount
 from server.auth.store_factory import open_user_store
 from server.matchmaking import Matchmaker
+from server.matchmaking.factory import open_matchmaker
+from server.matchmaking.presence import PresenceStore
 from server.rating import RatingService
 from server.rooms import Room, RoomManager
 from server.websocket.config import AUTO_RESIGN_SECONDS
@@ -49,7 +51,8 @@ class GameServer:
         logger=None,
     ):
         self.rooms = room_manager or RoomManager()
-        self.matchmaker = matchmaker or Matchmaker()
+        self.matchmaker = matchmaker or open_matchmaker()
+        self.presence = self._build_presence()
         self.clients: Set[Any] = set()
         self.accounts: Dict[Any, UserAccount] = {}
         self.auto_resign_seconds = auto_resign_seconds
@@ -93,6 +96,17 @@ class GameServer:
             JoinRoomRequest: self.room_handlers.handle_join_room,
             MoveRequest: self.move_handlers.handle_move,
         }
+
+    @staticmethod
+    def _build_presence() -> Optional[PresenceStore]:
+        import os
+
+        if not os.environ.get('REDIS_URL', '').strip():
+            return None
+        try:
+            return PresenceStore()
+        except Exception:
+            return None
 
     async def handle_client(self, websocket: Any) -> None:
         self.clients.add(websocket)

@@ -96,6 +96,15 @@ class MatchmakingHandlers:
             black_entry.connection,
             room,
         )
+        if self.server.presence is not None:
+            self.server.presence.set_session(
+                white_entry.username,
+                room.room_id,
+            )
+            self.server.presence.set_session(
+                black_entry.username,
+                room.room_id,
+            )
 
         players = room.player_infos()
         for player in room.players:
