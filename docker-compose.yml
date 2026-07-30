@@ -1,17 +1,28 @@
+x-kungfu-env: &kungfu-env
+  REDIS_URL: "redis://redis:6379/0"
+  DATABASE_URL: "postgresql://${POSTGRES_USER:-kungfu}:${POSTGRES_PASSWORD:-kungfu}@postgres:5432/${POSTGRES_DB:-kungfu}"
+  NATS_URL: "nats://nats:4222"
+  KUNGFU_TICK_SECONDS: "${KUNGFU_TICK_SECONDS:-0.05}"
+  KUNGFU_AUTO_RESIGN_SECONDS: "${KUNGFU_AUTO_RESIGN_SECONDS:-20}"
+  PYTHONPATH: "/app/kungfu_chess"
+
+x-kungfu-build: &kungfu-build
+  context: .
+  dockerfile: docker/Dockerfile
+
 services:
-  app:
-    build: .
+  ws-gateway:
+    build:
+      <<: *kungfu-build
+      target: ws-gateway
     ports:
       - "${KUNGFU_PORT:-8765}:8765"
     environment:
+      <<: *kungfu-env
+      SERVICE_NAME: "ws-gateway"
       KUNGFU_HOST: "0.0.0.0"
       KUNGFU_PORT: "8765"
       KUNGFU_DB_PATH: "/data/kungfu_chess.db"
-      KUNGFU_TICK_SECONDS: "${KUNGFU_TICK_SECONDS:-0.05}"
-      KUNGFU_AUTO_RESIGN_SECONDS: "${KUNGFU_AUTO_RESIGN_SECONDS:-20}"
-      REDIS_URL: "redis://redis:6379/0"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-kungfu}:${POSTGRES_PASSWORD:-kungfu}@postgres:5432/${POSTGRES_DB:-kungfu}"
-      NATS_URL: "nats://nats:4222"
     volumes:
       - app_data:/data
     depends_on:
@@ -20,6 +31,8 @@ services:
       postgres:
         condition: service_healthy
       nats:
+        condition: service_started
+      results-writer:
         condition: service_started
     restart: unless-stopped
     stop_grace_period: 15s
@@ -35,6 +48,64 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+
+  game-shard:
+    build:
+      <<: *kungfu-build
+      target: game-shard
+    environment:
+      <<: *kungfu-env
+      SERVICE_NAME: "game-shard"
+    depends_on:
+      nats:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-m", "services.healthcheck", "nats"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  matchmaker:
+    build:
+      <<: *kungfu-build
+      target: matchmaker
+    environment:
+      <<: *kungfu-env
+      SERVICE_NAME: "matchmaker"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-m", "services.healthcheck", "redis"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  results-writer:
+    build:
+      <<: *kungfu-build
+      target: results-writer
+    environment:
+      <<: *kungfu-env
+      SERVICE_NAME: "results-writer"
+    depends_on:
+      nats:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-m", "services.healthcheck", "nats"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   redis:
     image: redis:7-alpine
