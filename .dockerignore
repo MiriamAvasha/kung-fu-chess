@@ -29,7 +29,5 @@ KungFuChess.pyw
 ws_client.py
 tests
 
-# Docs / design
+# Docs / design (copied separately if needed; keep image small)
 docs
-Server_Design.md
-generate_server_design.py
