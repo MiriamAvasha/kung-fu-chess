@@ -1,0 +1,83 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${KUNGFU_PORT:-8765}:8765"
+    environment:
+      KUNGFU_HOST: "0.0.0.0"
+      KUNGFU_PORT: "8765"
+      KUNGFU_DB_PATH: "/data/kungfu_chess.db"
+      KUNGFU_TICK_SECONDS: "${KUNGFU_TICK_SECONDS:-0.05}"
+      KUNGFU_AUTO_RESIGN_SECONDS: "${KUNGFU_AUTO_RESIGN_SECONDS:-20}"
+      REDIS_URL: "redis://redis:6379/0"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-kungfu}:${POSTGRES_PASSWORD:-kungfu}@postgres:5432/${POSTGRES_DB:-kungfu}"
+      NATS_URL: "nats://nats:4222"
+    volumes:
+      - app_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    restart: unless-stopped
+    stop_grace_period: 15s
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s=socket.create_connection(('127.0.0.1',8765),2); s.close()",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-kungfu}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-kungfu}"
+      POSTGRES_DB: "${POSTGRES_DB:-kungfu}"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nats:
+    image: nats:2.10
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "${NATS_PORT:-4222}:4222"
+      - "${NATS_MONITOR_PORT:-8222}:8222"
+    volumes:
+      - nats_data:/data
+    restart: unless-stopped
+
+volumes:
+  app_data:
+  redis_data:
+  postgres_data:
+  nats_data:
