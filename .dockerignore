@@ -1,0 +1,36 @@
+# Git / IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.md
+!kungfu_chess/requirements-server.txt
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+*.egg-info
+.venv
+venv
+
+# Runtime / local data
+logs
+kungfu_chess/logs
+*.db
+kungfu_chess/server/data
+*.log
+
+# Client-only assets keep image smaller (server does not need sprites)
+kungfu_chess/assets
+kungfu_chess/client
+KungFuChess.pyw
+ws_client.py
+
+# Docs / design
+docs
+Server_Design.md
+Server_Design1.md
+generate_server_design.py
