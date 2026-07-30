@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 
-LOG_DIR = Path(__file__).resolve().parents[2] / 'logs'
+LOG_DIR = Path(__file__).resolve().parents[1] / 'logs'
 
 
 def setup_activity_logger(

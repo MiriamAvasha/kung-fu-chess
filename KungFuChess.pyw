@@ -5,9 +5,12 @@ import sys
 from pathlib import Path
 
 
-PROJECT_DIR = Path(__file__).resolve().parent / 'kungfu_chess'
-if str(PROJECT_DIR) not in sys.path:
-    sys.path.insert(0, str(PROJECT_DIR))
+ROOT = Path(__file__).resolve().parent
+ENGINE = ROOT / 'engine'
+for path in (ENGINE, ROOT):
+    text = str(path)
+    if text not in sys.path:
+        sys.path.insert(0, text)
 
 from client.websocket_client import main
 

@@ -4,7 +4,7 @@ x-kungfu-env: &kungfu-env
   NATS_URL: "nats://nats:4222"
   KUNGFU_TICK_SECONDS: "${KUNGFU_TICK_SECONDS:-0.05}"
   KUNGFU_AUTO_RESIGN_SECONDS: "${KUNGFU_AUTO_RESIGN_SECONDS:-20}"
-  PYTHONPATH: "/app/kungfu_chess"
+  PYTHONPATH: "/app/engine:/app"
 
 x-kungfu-build: &kungfu-build
   context: .

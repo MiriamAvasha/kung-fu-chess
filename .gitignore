@@ -3,5 +3,9 @@ __pycache__/
 .DS_Store
 .vscode/
 *.db
-kungfu_chess/server/data/
+server/data/
 logs/
+.pytest_cache/
+.env
+.venv/
+venv/

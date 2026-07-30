@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from app import main
+from texttests.cli import main
 
 
 class TestAppErrors:

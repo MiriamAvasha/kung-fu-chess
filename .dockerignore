@@ -4,7 +4,7 @@
 .cursor
 .vscode
 *.md
-!kungfu_chess/requirements-server.txt
+!requirements-server.txt
 
 # Python
 __pycache__
@@ -18,19 +18,18 @@ venv
 
 # Runtime / local data
 logs
-kungfu_chess/logs
 *.db
-kungfu_chess/server/data
+server/data
 *.log
 
-# Client-only assets keep image smaller (server does not need sprites)
-kungfu_chess/assets
-kungfu_chess/client
+# Client-only keep image smaller (server does not need sprites)
+assets
+client
 KungFuChess.pyw
 ws_client.py
+tests
 
 # Docs / design
 docs
 Server_Design.md
-Server_Design1.md
 generate_server_design.py

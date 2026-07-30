@@ -4,8 +4,12 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+ENGINE = ROOT / 'engine'
+TESTS = ROOT / 'tests'
+for path in (ENGINE, ROOT, TESTS):
+    text = str(path)
+    if text not in sys.path:
+        sys.path.insert(0, text)
 
 from engine.game_engine import GameEngine
 from input.controller import Controller
