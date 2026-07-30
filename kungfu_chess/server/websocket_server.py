@@ -2,6 +2,7 @@
 
 from server.websocket import (
     AUTO_RESIGN_SECONDS,
+    DB_PATH,
     HOST,
     PORT,
     TICK_SECONDS,
@@ -11,6 +12,7 @@ from server.websocket import (
 
 __all__ = [
     'AUTO_RESIGN_SECONDS',
+    'DB_PATH',
     'GameServer',
     'HOST',
     'PORT',
