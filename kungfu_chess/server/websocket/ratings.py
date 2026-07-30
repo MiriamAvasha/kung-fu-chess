@@ -57,3 +57,13 @@ class RatingCoordinator:
                 reason=reason,
             ),
         )
+        if self.server.events is not None:
+            await self.server.events.publish_game_over(
+                {
+                    'room_id': room.room_id,
+                    'winner': winner.username,
+                    'loser': loser.username,
+                    'ratings': ratings,
+                    'reason': reason,
+                }
+            )

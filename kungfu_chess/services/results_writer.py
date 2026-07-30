@@ -1,8 +1,9 @@
-"""Results writer — ensures JetStream is ready for game_over events."""
+"""Results writer — consumes game_over from JetStream into PostgreSQL."""
 
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -11,64 +12,65 @@ if str(PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(PROJECT_DIR))
 
 import nats
-from nats.js.api import RetentionPolicy, StreamConfig
 
-from server.infra.settings import NATS_URL, SERVICE_NAME
-from services._runtime import run_until_stopped
-
-GAME_RESULTS_STREAM = 'GAME_RESULTS'
-GAME_OVER_SUBJECT = 'games.over'
-
-
-async def _ensure_stream() -> None:
-    nc = await nats.connect(NATS_URL)
-    try:
-        js = nc.jetstream()
-        try:
-            await js.stream_info(GAME_RESULTS_STREAM)
-        except Exception:
-            await js.add_stream(
-                StreamConfig(
-                    name=GAME_RESULTS_STREAM,
-                    subjects=[GAME_OVER_SUBJECT],
-                    retention=RetentionPolicy.WORK_QUEUE,
-                )
-            )
-            print(
-                '[{}] created JetStream stream {}'.format(
-                    SERVICE_NAME,
-                    GAME_RESULTS_STREAM,
-                ),
-                flush=True,
-            )
-        else:
-            print(
-                '[{}] JetStream stream {} ready'.format(
-                    SERVICE_NAME,
-                    GAME_RESULTS_STREAM,
-                ),
-                flush=True,
-            )
-    finally:
-        await nc.close()
+from server.infra.game_results import GameResultsRepository
+from server.infra.nats_bus import (
+    GAME_OVER_SUBJECT,
+    GAME_RESULTS_STREAM,
+    RESULTS_CONSUMER,
+    ensure_game_results_stream,
+)
+from server.infra.settings import DATABASE_URL, NATS_URL, SERVICE_NAME
 
 
-async def _on_start() -> None:
-    await _ensure_stream()
+async def _handle_message(repo: GameResultsRepository, msg) -> None:
+    payload = json.loads(msg.data.decode('utf-8'))
+    inserted = repo.save_game_over(payload)
+    await msg.ack()
     print(
-        '[{}] connected to NATS at {}'.format(SERVICE_NAME, NATS_URL),
+        '[{}] {} room={} {} vs {} reason={}'.format(
+            SERVICE_NAME,
+            'saved' if inserted else 'duplicate',
+            payload.get('room_id'),
+            payload.get('winner'),
+            payload.get('loser'),
+            payload.get('reason'),
+        ),
         flush=True,
     )
 
 
-async def _on_heartbeat() -> None:
-    await _ensure_stream()
-    print('[{}] jetstream ok'.format(SERVICE_NAME), flush=True)
-
-
 async def main() -> None:
-    await run_until_stopped(_on_start, on_heartbeat=_on_heartbeat)
+    repo = GameResultsRepository(DATABASE_URL)
+    nc = await nats.connect(NATS_URL)
+    js = nc.jetstream()
+    await ensure_game_results_stream(js)
+    print(
+        '[{}] consuming {} on {}'.format(
+            SERVICE_NAME,
+            GAME_OVER_SUBJECT,
+            NATS_URL,
+        ),
+        flush=True,
+    )
+
+    async def callback(msg):
+        await _handle_message(repo, msg)
+
+    await js.subscribe(
+        GAME_OVER_SUBJECT,
+        cb=callback,
+        durable=RESULTS_CONSUMER,
+        stream=GAME_RESULTS_STREAM,
+        manual_ack=True,
+    )
+
+    stop = asyncio.Event()
+    await stop.wait()
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

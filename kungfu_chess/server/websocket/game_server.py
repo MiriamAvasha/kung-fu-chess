@@ -4,6 +4,7 @@ from websockets.exceptions import ConnectionClosed
 
 from server.auth import AuthService, UserAccount
 from server.auth.store_factory import open_user_store
+from server.infra.nats_bus import GameEventsPublisher, try_create_publisher
 from server.matchmaking import Matchmaker
 from server.matchmaking.factory import open_matchmaker
 from server.matchmaking.presence import PresenceStore
@@ -53,6 +54,7 @@ class GameServer:
         self.rooms = room_manager or RoomManager()
         self.matchmaker = matchmaker or open_matchmaker()
         self.presence = self._build_presence()
+        self.events: Optional[GameEventsPublisher] = try_create_publisher()
         self.clients: Set[Any] = set()
         self.accounts: Dict[Any, UserAccount] = {}
         self.auto_resign_seconds = auto_resign_seconds
