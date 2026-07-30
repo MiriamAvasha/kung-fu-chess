@@ -1,13 +1,13 @@
 from typing import Dict, Optional, Tuple
 
-from server.auth.user_repository import UserRepository
+from server.auth.user_store import UserStore
 from server.rating.elo import update_ratings
 
 
 class RatingService:
     """Applies ELO updates through the user repository."""
 
-    def __init__(self, repository: UserRepository):
+    def __init__(self, repository: UserStore):
         self._repository = repository
 
     def apply_match_result(

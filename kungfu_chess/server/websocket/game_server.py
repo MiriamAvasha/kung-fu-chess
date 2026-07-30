@@ -2,8 +2,8 @@ from typing import Any, Awaitable, Callable, Dict, Optional, Set, Type
 
 from websockets.exceptions import ConnectionClosed
 
-from server.auth import AuthService, UserAccount, UserRepository
-from server.db import open_database
+from server.auth import AuthService, UserAccount
+from server.auth.store_factory import open_user_store
 from server.matchmaking import Matchmaker
 from server.rating import RatingService
 from server.rooms import Room, RoomManager
@@ -69,8 +69,7 @@ class GameServer:
             self.rating_service = rating_service
             self._db_connection = None
         else:
-            self._db_connection = open_database(db_path)
-            repository = UserRepository(self._db_connection)
+            repository, self._db_connection = open_user_store(db_path)
             self.auth_service = auth_service or AuthService(repository)
             self.rating_service = (
                 rating_service or RatingService(repository)

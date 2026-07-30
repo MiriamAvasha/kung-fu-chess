@@ -23,6 +23,7 @@ services:
       KUNGFU_HOST: "0.0.0.0"
       KUNGFU_PORT: "8765"
       KUNGFU_DB_PATH: "/data/kungfu_chess.db"
+      KUNGFU_PERSISTENCE: "postgres"
     volumes:
       - app_data:/data
     depends_on:

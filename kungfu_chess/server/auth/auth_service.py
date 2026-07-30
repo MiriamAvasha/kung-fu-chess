@@ -2,7 +2,7 @@ from typing import Optional
 
 from server.auth.password_hasher import hash_password, verify_password
 from server.auth.user import UserAccount
-from server.auth.user_repository import UserRepository
+from server.auth.user_store import UserStore
 from shared.password import validate_password
 from shared.username import validate_username
 
@@ -17,7 +17,7 @@ class AuthError(Exception):
 class AuthService:
     """Application service: credential validation against the user store."""
 
-    def __init__(self, repository: UserRepository):
+    def __init__(self, repository: UserStore):
         self._repository = repository
 
     def get_account(self, username: str) -> Optional[UserAccount]:
