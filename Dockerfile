@@ -8,6 +8,15 @@ ENV REQUESTS_CA_BUNDLE=/etc/ca-bundle.crt
 ENV SSL_CERT_FILE=/etc/ca-bundle.crt
 # --- END NETFREE CERT INTSALL ---
 
+# Docker Desktop (Windows): NetFree script may print "Network not NetFree"
+# inside the build VM even though TLS is intercepted. Fall back to the
+# host CA bundle copied into docker/netfree-ca-bundle.crt.
+COPY docker/netfree-ca-bundle.crt /tmp/netfree-ca-bundle.crt
+RUN if [ ! -f /etc/ca-bundle.crt ]; then \
+      cp /tmp/netfree-ca-bundle.crt /etc/ca-bundle.crt; \
+    fi \
+    && rm -f /tmp/netfree-ca-bundle.crt
+
 WORKDIR /app
 
 COPY kungfu_chess/requirements-server.txt requirements.txt
