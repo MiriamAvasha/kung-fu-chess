@@ -1,13 +1,11 @@
-"""Compatibility facade for the layered WebSocket server package."""
-
-from server.websocket import (
+from server.websocket.app import main
+from server.websocket.config import (
     AUTO_RESIGN_SECONDS,
     HOST,
     PORT,
     TICK_SECONDS,
-    GameServer,
-    main,
 )
+from server.websocket.game_server import GameServer
 
 __all__ = [
     'AUTO_RESIGN_SECONDS',

@@ -21,6 +21,10 @@ def game_state_payload(engine: GameEngine) -> Dict[str, Any]:
         engine.arbiter.active_motions.values(),
         key=lambda motion: motion.order,
     )
+    jumps = sorted(
+        engine.arbiter.active_jumps.values(),
+        key=lambda jump: (jump.row, jump.col),
+    )
     return {
         'board_width': snapshot.board_width,
         'board_height': snapshot.board_height,
@@ -36,6 +40,15 @@ def game_state_payload(engine: GameEngine) -> Dict[str, Any]:
                 'duration_ms': motion.duration,
             }
             for motion in motions
+        ],
+        'active_jumps': [
+            {
+                'piece': jump.piece_token,
+                'at': [jump.row, jump.col],
+                'started_at_ms': jump.start_time,
+                'duration_ms': jump.duration,
+            }
+            for jump in jumps
         ],
     }
 

@@ -1,5 +1,12 @@
+"""Graphical entry point for the online client.
+
+The original local board remains available through ``run_local_game``.
+"""
+
+import asyncio
 import os
 
+from client.gui.app import main as run_online_client
 from engine.game_factory import build_engine
 from engine.game_engine import GameEngine
 from input.controller import Controller
@@ -29,7 +36,8 @@ def _has_timed_action(engine: GameEngine) -> bool:
     )
 
 
-def main():
+def run_local_game():
+    """Run the original single-process board demo."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     board_path = os.path.join(base_dir, 'assets', vc.BOARD_IMAGE_NAME)
     pieces_path = os.path.join(base_dir, 'assets', vc.PIECES_DIR_NAME)
@@ -71,6 +79,11 @@ def main():
         advance_animation,
         is_animating,
     )
+
+
+def main():
+    """Launch the server-connected graphical client."""
+    asyncio.run(run_online_client())
 
 
 if __name__ == '__main__':

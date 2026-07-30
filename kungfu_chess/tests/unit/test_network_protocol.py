@@ -53,6 +53,26 @@ def test_session_accepts_move_and_advances_authoritative_board():
     assert state['active_motions'] == []
 
 
+def test_same_square_command_starts_and_broadcasts_jump():
+    session = GameSession(build_engine())
+
+    result = session.handle_command('WPe2e2', PieceColor.WHITE.value)
+
+    assert result['type'] == 'move_result'
+    assert result['accepted'] is True
+    assert result['state']['active_jumps'] == [
+        {
+            'piece': 'wP',
+            'at': [6, 4],
+            'started_at_ms': 0,
+            'duration_ms': 1000,
+        },
+    ]
+
+    assert session.advance(1001) is True
+    assert session.game_state_message()['state']['active_jumps'] == []
+
+
 def test_session_rejects_piece_prefix_that_does_not_match_source():
     session = GameSession(build_engine())
 

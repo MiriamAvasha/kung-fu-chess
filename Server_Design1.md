@@ -91,61 +91,65 @@ Kung Fu Chess הוא משחק שחמט בזמן אמת. השרת חייב לנה
 
 ```mermaid
 flowchart TB
-    Clients["Clients"]
+    Client["Client (Desktop / Web)"]
 
-    subgraph region [One Region — Kubernetes / K3s Cluster]
-        Ingress["Ingress / LoadBalancer (TLS termination, rate limit)"]
-        ApiGateway["API Gateway (REST: login, rooms, history)"]
-        WsGateway["WS Gateway (asyncio, live connections)"]
-        Auth["Auth Service"]
-        Rooms["Rooms API (create / join by id)"]
-        Matchmaker["Matchmaker"]
-        Allocator["Game Allocator"]
-        NatsCore[["NATS Core — pub/sub"]]
-        JetStream[["NATS JetStream — ack + retry"]]
-        GameShards["Game Server Shards (authoritative GameEngine)"]
-        ResultsWriter["Results Writer (batch ELO updates)"]
-        PostgreSQL[("PostgreSQL (users, games, history)")]
-        Redis[("Redis (sessions, rooms, queue)")]
-        Observability["Observability"]
+    subgraph edgeLayer [Edge Layer]
+        Ingress["Ingress / Load Balancer"]
     end
 
-    Clients -->|"HTTPS"| Ingress
-    Clients -->|"WSS"| Ingress
+    subgraph k8sLayer [Kubernetes / K3s Cluster]
+        ApiGateway["API Gateway"]
+        WsGateway["WebSocket Gateway Pods"]
+        Matchmaker["Matchmaker Service"]
+        Allocator["Game Allocator"]
+        GameShards["Game Server Shards"]
+        ResultsWriter["Results Writer"]
+        Observability["Observability Stack"]
+    end
 
-    Ingress --> ApiGateway
-    Ingress --> WsGateway
+    subgraph messagingLayer [Messaging and Ephemeral State]
+        Redis["Redis Cluster"]
+        NatsCore["NATS Core"]
+        JetStream["NATS JetStream"]
+    end
 
-    ApiGateway --> Auth
-    ApiGateway --> Rooms
-    Auth --> PostgreSQL
-    Rooms --> Redis
-    Matchmaker --> Redis
-    Allocator --> Redis
-    WsGateway --> GameShards
-    GameShards -->|"game_over"| JetStream
+    subgraph durableLayer [Durable Data Layer]
+        PostgreSQL["PostgreSQL"]
+        Backups["Encrypted Backups"]
+    end
+
+    Client -->|"HTTPS: login, rooms, history"| Ingress
+    Client <-->|"WSS: commands and state updates"| Ingress
+
+    Ingress -->|"REST"| ApiGateway
+    Ingress -->|"WebSocket"| WsGateway
+
+    ApiGateway --> PostgreSQL
+    ApiGateway --> Redis
+
+    WsGateway --> Matchmaker
+    Matchmaker <-->|"ELO queues and expiration"| Redis
+    Matchmaker -->|"matched players"| Allocator
+
+    Allocator <-->|"capacity and room routing"| Redis
+    Allocator -->|"assign room"| GameShards
+    WsGateway <-->|"realtime commands and updates"| NatsCore
+    NatsCore <--> GameShards
+
+    GameShards <-->|"checkpoint, presence, reconnect"| Redis
+    GameShards -->|"durable game_over"| JetStream
     JetStream --> ResultsWriter
     ResultsWriter --> PostgreSQL
+    PostgreSQL --> Backups
 
-    WsGateway -.-> NatsCore
-    Matchmaker -.-> NatsCore
-    Allocator -.-> NatsCore
-    Rooms -.-> NatsCore
-    GameShards -.-> NatsCore
-    GameShards -.-> Observability
+    Ingress -.-> Observability
+    ApiGateway -.-> Observability
     WsGateway -.-> Observability
+    Matchmaker -.-> Observability
+    Allocator -.-> Observability
+    GameShards -.-> Observability
+    ResultsWriter -.-> Observability
 ```
-
-**מקרא:** קו רציף מייצג זרימת נתונים; קו מקווקו מייצג Control Plane,
-תיאום או Telemetry. הפריסה מציגה את Clients למעלה, את שערי הכניסה מתחתיהם,
-את שירותי המשחק במרכז ואת שכבת הנתונים בתחתית.
-
-### תצוגה גרפית
-
-![Distributed Game Server Architecture](docs/images/server-architecture.png)
-
-*תרשים 1 — ארכיטקטורת שרת מבוזרת באזור Kubernetes/K3s יחיד. התמונה נוצרת
-ממקור ה-Mermaid שמופיע מעליה, ולכן ניתן לעדכן ולרנדר אותה מחדש.*
 
 ### החלטת Messaging
 

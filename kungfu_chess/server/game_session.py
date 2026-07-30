@@ -87,10 +87,13 @@ class GameSession:
                 'state': game_state_payload(self.engine),
             }
 
-        result = self.engine.request_move(
-            command.source,
-            command.destination,
-        )
+        if command.source == command.destination:
+            result = self.engine.request_jump(command.source)
+        else:
+            result = self.engine.request_move(
+                command.source,
+                command.destination,
+            )
         return {
             'type': ServerMessageType.MOVE_RESULT,
             'command': command.raw,
@@ -121,4 +124,17 @@ class GameSession:
                 key=lambda active: active.order,
             )
         )
-        return board, snapshot.game_over, motions
+        jumps = tuple(
+            (
+                jump.piece_id,
+                jump.row,
+                jump.col,
+                jump.start_time,
+                jump.end_time,
+            )
+            for jump in sorted(
+                self.engine.arbiter.active_jumps.values(),
+                key=lambda active: (active.row, active.col),
+            )
+        )
+        return board, snapshot.game_over, motions, jumps

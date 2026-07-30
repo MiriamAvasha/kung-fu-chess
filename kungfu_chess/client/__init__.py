@@ -1,1 +1,1 @@
-"""Client-side networking and terminal presentation."""
+"""Client-side networking and graphical presentation."""
